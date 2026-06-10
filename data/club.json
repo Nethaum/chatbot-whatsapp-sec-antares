@@ -1,0 +1,141 @@
+{
+  "name": "SEC Antares",
+  "shortName": "SEC Antares",
+  "welcome": "Bem-vindo(a) ao atendimento da SEC Antares.",
+  "address": {
+    "line": "Rua das Palmeiras, 123 - Centro",
+    "mapsUrl": "https://maps.google.com/?q=Rua+das+Palmeiras+123"
+  },
+  "social": {
+    "instagramUrl": "https://www.instagram.com/sociedade_antares/"
+  },
+  "hours": [
+    "Secretaria: segunda a sexta, 9h às 18h",
+    "Piscina: terça a domingo, 8h às 20h",
+    "Quadras: todos os dias, 7h às 22h"
+  ],
+  "membership": {
+    "plans": [
+      {
+        "name": "Sócio Patrimonial",
+        "emoji": "🏛️",
+        "price": "Entrada de R$ 1.500,00 + R$ 100,00/mês",
+        "description": "Indicado para quem deseja adquirir título e participar como proprietário de parte do clube.",
+        "benefits": [
+          "50% de desconto na academia",
+          "Descontos em esportes e aluguéis",
+          "Acesso aos espaços de uso comum"
+        ]
+      },
+      {
+        "name": "Sócio Contribuinte",
+        "emoji": "🤝",
+        "price": "R$ 129,00/mês",
+        "description": "Plano mensal para utilização do clube, com permanência mínima de 6 meses.",
+        "benefits": [
+          "Desconto em aulas de natação e hidroginástica",
+          "Isenção de aluguel na área da churrasqueira",
+          "Desconto parcial em aluguéis e taxas dos salões",
+          "Acesso a bolão, parquinho, jogos de mesa e piscina de uso comum"
+        ]
+      }
+    ],
+    "familyNote": "👨‍👩‍👧‍👦 O sócio titular pode compartilhar seu título, patrimonial ou contribuinte, exclusivamente com seus dependentes.",
+    "dependentNote": "📌 Dependentes são as pessoas vinculadas ao cadastro do sócio titular; a secretaria confirma o vínculo durante o atendimento.",
+    "cta": "Para iniciar seu atendimento, envie seu nome completo, telefone e o plano de interesse.",
+    "images": [
+      {
+        "path": "assets/membership/socio-patrimonial.jpg"
+      },
+      {
+        "path": "assets/membership/socio-contribuinte.jpg"
+      }
+    ],
+    "attachments": [
+      {
+        "path": "assets/membership/sociedade-esportiva-cultural-antares.pdf",
+        "caption": "📎 Manual de apresentação da SEC Antares"
+      }
+    ]
+  },
+  "dues": {
+    "dueDay": "Todo dia 15",
+    "values": [
+      {
+        "name": "Patrimonial",
+        "amount": "R$ 100,00",
+        "emoji": "🏛️"
+      },
+      {
+        "name": "Contribuinte",
+        "amount": "R$ 129,00",
+        "emoji": "🤝"
+      }
+    ],
+    "note": "👨‍👩‍👧‍👦 O sócio titular pode compartilhar seu título, patrimonial ou contribuinte, exclusivamente com seus dependentes.",
+    "dependentNote": "📌 Dependentes são as pessoas vinculadas ao cadastro do sócio titular; a secretaria confirma o vínculo durante o atendimento.",
+    "billingContact": "(00) 00000-0000"
+  },
+  "reservations": {
+    "intro": "Selecione o ambiente que deseja a reserva:",
+    "requirements": [
+      "Nome completo do sócio titular responsável",
+      "Data e horário"
+    ],
+    "confirmation": "Nossa equipe verificará a disponibilidade e responderá em breve.",
+    "spaces": [
+      {
+        "option": 11,
+        "name": "Salão Principal"
+      },
+      {
+        "option": 12,
+        "name": "Salão Restaurante"
+      },
+      {
+        "option": 13,
+        "name": "Churrasqueira (com Playground e Cancha de Bocha)"
+      },
+      {
+        "option": 14,
+        "name": "Quadra de Areia"
+      }
+    ]
+  },
+  "events": [
+    {
+      "date": "2026-05-23",
+      "title": "Torneio interno",
+      "details": "Inscrições na secretaria até 20/05."
+    },
+    {
+      "date": "2026-06-06",
+      "title": "Feijoada do clube",
+      "details": "Convites disponíveis na secretaria."
+    }
+  ],
+  "contacts": [
+    {
+      "area": "Secretaria",
+      "name": "Atendimento",
+      "phone": "(00) 00000-0000"
+    },
+    {
+      "area": "Financeiro",
+      "name": "Tesouraria",
+      "phone": "(00) 00000-0000"
+    }
+  ],
+  "feedback": {
+    "summary": "🙏 Sua opinião ajuda a SEC Antares a melhorar.",
+    "instruction": "📝 Envie seu elogio, sugestão, reclamação ou comentário.",
+    "returnNote": "💡 Se desejar retorno, inclua seu nome e telefone.",
+    "finishNote": "📨 Quando terminar, envie: *fim*"
+  },
+  "rules": [
+    "Apresente a carteirinha na entrada.",
+    "Convidados devem ser cadastrados na secretaria.",
+    "Animais de estimação devem seguir as regras internas do clube."
+  ],
+  "handoff": "Vou pedir para alguém da equipe assumir por aqui.\n📝 Enquanto isso, deixe seu nome e o assunto em uma única mensagem."
+}
