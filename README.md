@@ -58,6 +58,23 @@ Para conferir sintaxe, fluxos principais e proteção contra duplicidade:
 npm.cmd run check
 ```
 
+## Inicialização automática no Windows
+
+Para iniciar o bot automaticamente sempre que entrar na sua conta do Windows:
+
+```powershell
+npm.cmd run autostart:install
+```
+
+O bot será executado em segundo plano no próximo login. A saída fica registrada em `.bot_state\autostart.log`.
+
+Para consultar ou remover a tarefa:
+
+```powershell
+npm.cmd run autostart:status
+npm.cmd run autostart:uninstall
+```
+
 ## Sessão do WhatsApp
 
 O bot usa a sessão salva pelo WhatsApp Web em `.wwebjs_auth/`. Isso reduz a necessidade de escanear o QR Code novamente, mas não impede completamente que o WhatsApp encerre a sessão por segurança, mudança no celular, muito tempo offline ou conflito com outro WhatsApp Web.
