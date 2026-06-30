@@ -3,6 +3,7 @@ import { findMemberByPhone, phoneVariants } from '../src/memberRegistry.js';
 
 const phone = process.argv.slice(2).join(' ').trim();
 const membersPath = new URL('../data/members.json', import.meta.url);
+const overridesPath = new URL('../data/members.overrides.json', import.meta.url);
 
 if (!phone) {
   console.error('Informe um telefone. Exemplo: npm.cmd run members:find -- "+55 47 9281-2101"');
@@ -10,9 +11,11 @@ if (!phone) {
 }
 
 const hasLocalCache = await fileExists(membersPath);
+const hasLocalOverrides = await fileExists(overridesPath);
 const result = await findMemberByPhone(phone);
 
 console.log(`Cache local: ${hasLocalCache ? 'encontrado' : 'nao encontrado'}`);
+console.log(`Indice local: ${hasLocalOverrides ? 'encontrado' : 'nao encontrado'}`);
 console.log(`Variantes analisadas: ${[...phoneVariants(phone)].join(', ')}`);
 
 if (result.status === 'found') {

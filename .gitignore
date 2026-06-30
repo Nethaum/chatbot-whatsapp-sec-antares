@@ -7,6 +7,7 @@ node_modules/
 .bot_state/
 logs/
 data/members.json
+data/members.overrides.json
 npm-debug.log*
 *.log
 .DS_Store

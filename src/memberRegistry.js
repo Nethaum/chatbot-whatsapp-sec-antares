@@ -10,6 +10,7 @@ const LOCAL_CACHE_TTL_MS = 60 * 60 * 1000;
 const WARNING_TTL_MS = 10 * 60 * 1000;
 const HEADER_SCAN_LIMIT = 20;
 const localMembersPath = rootPath('data', 'members.json');
+const localMemberOverridesPath = rootPath('data', 'members.overrides.json');
 
 let cachedRegistry;
 let activeRegistryLoad;
@@ -139,9 +140,10 @@ async function localRegistryExists() {
 
 async function readRegistry() {
   const localRegistry = await readLocalRegistry();
+  const overridesRegistry = await readLocalOverridesRegistry();
 
-  if (localRegistry) {
-    return localRegistry;
+  if (localRegistry || overridesRegistry) {
+    return combineLocalRegistries(localRegistry, overridesRegistry);
   }
 
   if (!settings.membersRemoteLookup || !settings.membersSpreadsheetUrl) {
@@ -160,8 +162,16 @@ async function readRegistry() {
 }
 
 async function readLocalRegistry() {
+  return readLocalMembersFile(localMembersPath, 'local');
+}
+
+async function readLocalOverridesRegistry() {
+  return readLocalMembersFile(localMemberOverridesPath, 'local-overrides');
+}
+
+async function readLocalMembersFile(filePath, source) {
   try {
-    const content = await fs.readFile(localMembersPath, 'utf8');
+    const content = await fs.readFile(filePath, 'utf8');
     const parsed = JSON.parse(content);
     const members = Array.isArray(parsed) ? parsed : parsed.members;
 
@@ -170,7 +180,7 @@ async function readLocalRegistry() {
     }
 
     return {
-      source: 'local',
+      source,
       members: members.map(normalizeLocalMember).filter((member) => member.phoneVariants.size),
       expiresAt: Date.now() + LOCAL_CACHE_TTL_MS
     };
@@ -179,8 +189,18 @@ async function readLocalRegistry() {
       return null;
     }
 
-    throw new Error(`Não foi possível ler data/members.json. ${error.message}`);
+    throw new Error(`Não foi possível ler ${filePath}. ${error.message}`);
   }
+}
+
+function combineLocalRegistries(...registries) {
+  const availableRegistries = registries.filter(Boolean);
+
+  return {
+    source: availableRegistries.map((registry) => registry.source).join('+'),
+    members: availableRegistries.flatMap((registry) => registry.members),
+    expiresAt: Math.min(...availableRegistries.map((registry) => registry.expiresAt))
+  };
 }
 
 function normalizeLocalMember(member) {
