@@ -1,6 +1,6 @@
 import { containsAny, normalizeText } from './text.js';
 import { buildEventsReply, checkReservationAvailability } from './eventAgenda.js';
-import { findMemberByPhone, shouldSendMemberLookupNotice } from './memberRegistry.js';
+import { findMemberByPhone } from './memberRegistry.js';
 import { buildReservationPricingText } from './reservationPricing.js';
 import { checkCourtAvailability } from './courtAgenda.js';
 import { formatDate, weekdayName } from './dateUtils.js';
@@ -31,7 +31,6 @@ const reservationStates = new Map();
 const membershipStates = new Map();
 const feedbackStates = new Map();
 const navigationStates = new Map();
-const senderIdentificationStates = new Map();
 const senderAccessStates = new Map();
 
 const SENDER_ACCESS_TTL_MS = 12 * 60 * 60 * 1000;
@@ -74,37 +73,13 @@ export function buildWaitNotice(input, context = {}) {
   return null;
 }
 
-export async function buildPreflightWaitNotice(input, context = {}) {
+export async function buildPreflightReply(input, context = {}) {
   const text = normalizeText(input);
   const chatId = context.chatId || 'default';
+  const userPhones = contextUserPhones(context);
 
-  if (
-    !context.userPhone ||
-    context.skipMemberCheck ||
-    senderIdentificationStates.has(chatId) ||
-    senderAccessAllowed(chatId) ||
-    shouldCloseConversation(text)
-  ) {
+  if (!userPhones.length || context.skipMemberCheck) {
     return null;
-  }
-
-  if (!(await shouldSendMemberLookupNotice())) {
-    return null;
-  }
-
-  return '⏳ Só um instante, estou verificando seu cadastro.';
-}
-
-export async function buildPreflightReply(input, club, context = {}) {
-  const text = normalizeText(input);
-  const chatId = context.chatId || 'default';
-
-  if (!context.userPhone || context.skipMemberCheck) {
-    return null;
-  }
-
-  if (senderIdentificationStates.has(chatId)) {
-    return handleActiveSenderIdentificationState(input, text, chatId, club);
   }
 
   if (shouldCloseConversation(text)) {
@@ -115,7 +90,7 @@ export async function buildPreflightReply(input, club, context = {}) {
     return null;
   }
 
-  const result = await findMemberByPhone(context.userPhone);
+  const result = await findMemberByPhone(userPhones);
 
   if (result.status === 'found') {
     rememberSenderAccess(chatId, 'member', SENDER_ACCESS_TTL_MS, result.member);
@@ -128,11 +103,15 @@ export async function buildPreflightReply(input, club, context = {}) {
     return null;
   }
 
-  senderIdentificationStates.set(chatId, {
-    step: 'awaiting_sender_identification'
-  });
+  rememberSenderAccess(chatId, 'unchecked', SENDER_CHECK_RETRY_MS);
+  return null;
+}
 
-  return withNavigationShortcuts(senderIdentificationPrompt(club));
+function contextUserPhones(context) {
+  return [
+    ...(Array.isArray(context.userPhones) ? context.userPhones : []),
+    context.userPhone
+  ].filter(Boolean);
 }
 
 export async function buildReply(input, club, context = {}) {
@@ -144,7 +123,7 @@ export async function buildReply(input, club, context = {}) {
   }
 
   if (!context.memberPreflightDone) {
-    const preflightReply = await buildPreflightReply(input, club, context);
+    const preflightReply = await buildPreflightReply(input, context);
 
     if (preflightReply) {
       return preflightReply;
@@ -382,25 +361,6 @@ function closeConversation(chatId, club) {
   return closing(club);
 }
 
-function handleActiveSenderIdentificationState(input, text, chatId, club) {
-  if (shouldCloseConversation(text) || shouldPauseRequest(text)) {
-    clearSenderIdentificationState(chatId);
-    return closeConversation(chatId, club);
-  }
-
-  if (shouldShowContextMainMenu(text) || shouldGoBack(text) || isAcknowledgement(text)) {
-    return withNavigationShortcuts(senderIdentificationPrompt(club));
-  }
-
-  if (!hasMeaningfulSenderIdentification(input)) {
-    return withNavigationShortcuts(invalidSenderIdentification(club));
-  }
-
-  clearSenderIdentificationState(chatId);
-  rememberSenderAccess(chatId, 'identified');
-  return withNavigationShortcuts(senderIdentificationReceived(club));
-}
-
 function senderAccessAllowed(chatId) {
   const access = senderAccessStates.get(chatId);
 
@@ -438,7 +398,6 @@ function clearAllStates(chatId) {
   clearReservationState(chatId);
   clearMembershipState(chatId);
   clearFeedbackState(chatId);
-  clearSenderIdentificationState(chatId);
 }
 
 async function replyForIntent(intentKey, club, chatId) {
@@ -1221,62 +1180,6 @@ function feedbackReminder() {
   ].join('\n');
 }
 
-function senderIdentificationPrompt(club) {
-  return [
-    '🪪 Identificação',
-    '',
-    `👋 Olá! Não localizei este número no cadastro da ${club.shortName || club.name}.`,
-    '',
-    '📝 Para continuar, envie:',
-    '• 👤 Nome completo',
-    '• 🧾 Se é sócio titular, dependente ou visitante',
-    '• 📞 Telefone para contato, se for diferente deste WhatsApp',
-    '',
-    '💡 Exemplo: João da Silva, dependente do sócio titular Carlos da Silva.'
-  ].join('\n');
-}
-
-function invalidSenderIdentification(club) {
-  return [
-    '🪪 Identificação',
-    '',
-    '❌ Não consegui identificar os dados.',
-    '',
-    '📝 Envie seu nome completo e informe se é sócio titular, dependente ou visitante.',
-    `💬 Isso ajuda a equipe da ${club.shortName || club.name} a localizar ou confirmar seu cadastro.`
-  ].join('\n');
-}
-
-function senderIdentificationReceived(club) {
-  return [
-    '🪪 Identificação',
-    '',
-    '✅ Dados recebidos.',
-    '',
-    `🙏 Obrigado. Agora você já pode seguir com o atendimento da ${club.shortName || club.name}.`,
-    '🏠 Envie *menu* para ver as opções.'
-  ].join('\n');
-}
-
-function hasMeaningfulSenderIdentification(value) {
-  const text = normalizeText(value);
-
-  if (
-    !text ||
-    shouldShowMainMenu(text) ||
-    shouldGoBack(text) ||
-    shouldCloseConversation(text) ||
-    shouldPauseRequest(text)
-  ) {
-    return false;
-  }
-
-  const words = String(value || '').match(/\p{L}{2,}/gu) || [];
-  const digits = String(value || '').replace(/\D/g, '');
-
-  return words.length >= 2 || digits.length >= 8;
-}
-
 function askReservationDate(choice, pricingText) {
   return [
     `${choice.emoji} ${choice.name}`,
@@ -1396,14 +1299,14 @@ function confirmReservationDate(choice, selectedDate) {
 
 function availableReservationDate(choice, selectedDate, details = {}) {
   return reservationDetailsPrompt(choice, selectedDate, details, [
-    '• 👤 Nome completo do responsável (caso seja dependente, informe o nome do sócio titular)',
+    '• 👤 Nome completo do responsável pela solicitação',
     '• 🕒 Horário de início do evento'
   ]);
 }
 
 function courtReservationDetailsPrompt(choice, selectedDate, details = {}) {
   return reservationDetailsPrompt(choice, selectedDate, details, [
-    '• 👤 Nome completo do sócio titular responsável',
+    '• 👤 Nome completo do responsável pela solicitação',
     '• 🕒 Horário desejado'
   ]);
 }
@@ -1703,11 +1606,7 @@ function invalidReservationDetails(choice) {
 }
 
 function reservationNameInstruction(choice) {
-  if (choice.type === 'court') {
-    return 'o nome completo do sócio titular responsável';
-  }
-
-  return 'o nome completo do responsável (caso seja dependente, informe o nome do sócio titular)';
+  return 'o nome completo do responsável pela solicitação';
 }
 
 function unavailableReservationDate(choice, availability) {
@@ -1745,10 +1644,6 @@ function clearFeedbackState(chatId) {
   feedbackStates.delete(chatId);
 }
 
-function clearSenderIdentificationState(chatId) {
-  senderIdentificationStates.delete(chatId);
-}
-
 function setNavigationScreen(chatId, screen) {
   navigationStates.set(chatId, { screen });
 }
@@ -1773,7 +1668,7 @@ function selectedReservationSpace(choice) {
     '',
     '📝 Para concluir a solicitação, envie:',
     '',
-    '• 👤 Nome completo do sócio titular responsável',
+    '• 👤 Nome completo do responsável pela solicitação',
     '• 🗓️ Data',
     '• 🕒 Horário',
     '',

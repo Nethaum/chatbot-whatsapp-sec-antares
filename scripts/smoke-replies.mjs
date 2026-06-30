@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
-import { buildReply } from '../src/replies.js';
+import { buildPreflightReply, buildReply } from '../src/replies.js';
 
 const club = JSON.parse(await readFile(new URL('../data/club.json', import.meta.url), 'utf8'));
 
@@ -51,8 +51,22 @@ assert.doesNotMatch(feedbackSent, /Atendimento encerrado/);
 const membershipMenu = await ask('4', 'smoke-membership');
 assert.match(membershipMenu, /Associação/);
 assert.match(membershipMenu, /material de apresentação/);
+assert.doesNotMatch(membershipMenu, /Identificação|Não localizei/);
 
-const incompleteMembership = await ask('Amilcar', 'smoke-membership');
+const unknownPreflight = await buildPreflightReply('4', {
+  chatId: 'smoke-unidentified-membership',
+  userPhone: '5547000000000'
+});
+assert.equal(replyText(unknownPreflight), null);
+
+const unknownMembershipMenu = await buildReply('4', club, {
+  chatId: 'smoke-unidentified-membership',
+  userPhone: '5547000000000'
+});
+assert.match(replyText(unknownMembershipMenu), /Associação/);
+assert.doesNotMatch(replyText(unknownMembershipMenu), /Identificação|Não localizei/);
+
+const incompleteMembership = await ask('Fulano', 'smoke-membership');
 assert.match(incompleteMembership, /Informações recebidas até aqui|Não consegui identificar/);
 assert.match(incompleteMembership, /Telefone/);
 assert.match(incompleteMembership, /Plano de interesse/);

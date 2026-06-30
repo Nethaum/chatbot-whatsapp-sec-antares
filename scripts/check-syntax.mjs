@@ -7,6 +7,7 @@ const files = [
   'src/config.js',
   'src/messageGuard.js',
   'src/memberRegistry.js',
+  'src/memberIndex.js',
   'src/eventAgenda.js',
   'src/workbookDownloader.js',
   'src/reservationPricing.js',

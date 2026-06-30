@@ -79,7 +79,7 @@
   "reservations": {
     "intro": "Selecione o ambiente que deseja a reserva:",
     "requirements": [
-      "Nome completo do sócio titular responsável",
+      "Nome completo do responsável pela solicitação",
       "Data e horário"
     ],
     "confirmation": "Nossa equipe verificará a disponibilidade e responderá em breve.",

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { settings, loadClub } from './config.js';
 import { logConversation } from './logger.js';
 import { acquireInstanceLock, shouldProcessMessage, shouldSendReply } from './messageGuard.js';
-import { buildPreflightReply, buildPreflightWaitNotice, buildReply, buildWaitNotice } from './replies.js';
+import { buildPreflightReply, buildReply, buildWaitNotice } from './replies.js';
 import { compactWhitespace } from './text.js';
 
 const { Client, LocalAuth, MessageMedia } = pkg;
@@ -149,18 +149,13 @@ async function handleMessage(message) {
 
     const cleanBody = isGroup ? removeGroupPrefix(body) : body;
     const chatId = chat.id?._serialized || message.from;
-    const userPhone = isGroup ? message.author : message.from;
+    const userPhones = await resolveSenderPhoneCandidates(message, chat, isGroup);
     const replyContext = {
       chatId,
-      userPhone
+      userPhone: userPhones[0] || '',
+      userPhones
     };
-    const preflightWaitNotice = await buildPreflightWaitNotice(cleanBody, replyContext);
-
-    if (preflightWaitNotice) {
-      await sendReply(chat, preflightWaitNotice);
-    }
-
-    const preflightReply = await buildPreflightReply(cleanBody, club, replyContext);
+    const preflightReply = await buildPreflightReply(cleanBody, replyContext);
 
     if (preflightReply) {
       await sendReply(chat, preflightReply);
@@ -199,6 +194,44 @@ async function handleMessage(message) {
 
     console.error('Erro ao responder mensagem:', error);
   }
+}
+
+async function resolveSenderPhoneCandidates(message, chat, isGroup) {
+  const rawCandidates = [
+    isGroup ? message.author : message.from,
+    !isGroup ? chat.id?.user : null,
+    !isGroup ? chat.id?._serialized : null
+  ];
+
+  try {
+    const contact = await message.getContact();
+    rawCandidates.push(contact?.number, contact?.id?.user, contact?.id?._serialized);
+  } catch (error) {
+    console.warn(`Não foi possível ler detalhes do contato para validar o cadastro: ${error.message}`);
+  }
+
+  return uniqueValues(rawCandidates.flatMap(extractPhoneCandidates));
+}
+
+function extractPhoneCandidates(value) {
+  const text = String(value || '').trim();
+
+  if (!text || /@lid\b/i.test(text)) {
+    return [];
+  }
+
+  const beforeAt = text.replace(/@.+$/, '');
+  const digits = beforeAt.replace(/\D/g, '');
+
+  if (digits.length < 8 || digits.length > 16) {
+    return [];
+  }
+
+  return [digits];
+}
+
+function uniqueValues(values) {
+  return [...new Set(values.filter(Boolean))];
 }
 
 async function sendReply(chat, reply) {

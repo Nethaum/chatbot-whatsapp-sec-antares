@@ -1,10 +1,14 @@
 {
   "updatedAt": "2026-06-30T00:00:00.000Z",
-  "source": "indice local de socios",
+  "source": "complementos locais confirmados",
   "members": [
     {
       "name": "Nome Completo do Sócio",
       "phones": ["+55 47 99999-0000"]
     }
+  ],
+  "notes": [
+    "Use este arquivo apenas para números confirmados pela secretaria ou pelo próprio sócio.",
+    "Não adicione números por suposição ou apenas porque foram usados em testes."
   ]
 }

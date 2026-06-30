@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "updatedAt": "2026-06-30T00:00:00.000Z",
+  "source": "exemplo",
+  "encoding": "sha256(phoneVariant|uniqueSuffix8)->base64(name); metadata fields are encoded when sensitive",
+  "entries": [
+    {
+      "key": "hash-do-telefone-normalizado",
+      "name": "Tm9tZSBDb21wbGV0byBkbyBTw7NjaW8=",
+      "holder": 1,
+      "sheet": "TGlzdGEgZGUgU8OzY2lvcyBQYXRyaW1vbmlhaXM=",
+      "category": "cGF0cmltb25pYWw="
+    }
+  ]
+}

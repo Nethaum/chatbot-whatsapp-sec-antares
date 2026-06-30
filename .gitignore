@@ -8,6 +8,7 @@ node_modules/
 logs/
 data/members.json
 data/members.overrides.json
+data/members.index.json
 npm-debug.log*
 *.log
 .DS_Store

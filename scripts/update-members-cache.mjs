@@ -1,9 +1,11 @@
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import { settings } from '../src/config.js';
 import { downloadWorkbook } from '../src/workbookDownloader.js';
+import { buildIndexEntries } from '../src/memberIndex.js';
 import { extractMembersFromWorkbookBuffer } from '../src/memberRegistry.js';
 
-const outputPath = new URL('../data/members.json', import.meta.url);
+const outputPath = new URL('../data/members.index.json', import.meta.url);
 const sourceArg = process.argv[2];
 const source = sourceArg || process.env.MEMBERS_SOURCE || settings.membersSpreadsheetUrl;
 
@@ -15,17 +17,17 @@ if (!source) {
 try {
   const buffer = isUrl(source) ? await downloadWorkbook(source) : await fs.readFile(source);
   const members = await extractMembersFromWorkbookBuffer(buffer);
+  const entries = buildIndexEntries(members);
   const payload = {
+    version: 1,
     updatedAt: new Date().toISOString(),
-    source: isUrl(source) ? 'url' : source,
-    members: members.map((member) => ({
-      name: member.name,
-      phones: member.phones
-    }))
+    source: isUrl(source) ? 'url' : path.basename(source),
+    encoding: 'sha256(phoneVariant|uniqueSuffix8)->base64(name); metadata fields are encoded when sensitive',
+    entries
   };
 
   await fs.writeFile(outputPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
-  console.log(`Lista local de sócios atualizada: ${members.length} registro(s).`);
+  console.log(`Indice local de socios atualizado: ${members.length} registro(s), ${entries.length} chave(s).`);
 } catch (error) {
   console.error('Nao foi possivel atualizar a lista local de socios.');
   console.error(`Fonte usada: ${source}`);

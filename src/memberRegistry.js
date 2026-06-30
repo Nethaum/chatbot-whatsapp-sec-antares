@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import { rootPath, settings } from './config.js';
 import { cellText } from './excelUtils.js';
@@ -9,6 +10,8 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 const LOCAL_CACHE_TTL_MS = 60 * 60 * 1000;
 const WARNING_TTL_MS = 10 * 60 * 1000;
 const HEADER_SCAN_LIMIT = 20;
+const HOLDER_ROW_MIN_FILL_MATCHES = 3;
+const localMembersIndexPath = rootPath('data', 'members.index.json');
 const localMembersPath = rootPath('data', 'members.json');
 const localMemberOverridesPath = rootPath('data', 'members.overrides.json');
 
@@ -41,17 +44,26 @@ const dddHeaderWords = [
 const nameHeaderWords = [
   'nome',
   'nome completo',
-  'socio',
-  'socia',
-  'sócio',
-  'sócia',
+  'nome de socio',
+  'nome de sócio',
+  'nome do socio',
+  'nome do sócio',
   'associado',
-  'associada',
-  'titular'
+  'associada'
 ];
 
+const holderFillThemes = new Set(['8']);
+const holderFillColors = new Set([
+  'B7DEE8',
+  'C5D9F1',
+  'DDEBF7',
+  'DAEEF3',
+  'CCFFFF',
+  '9CC2E5'
+]);
+
 export async function findMemberByPhone(phone) {
-  const targetVariants = phoneVariants(phone);
+  const targetVariants = phoneTargetVariants(phone);
 
   if (!targetVariants.size) {
     return { status: 'invalid_phone' };
@@ -67,7 +79,7 @@ export async function findMemberByPhone(phone) {
     return { status: 'disabled' };
   }
 
-  const member = registry.members.find((item) => intersects(item.phoneVariants, targetVariants));
+  const member = registry.members.find((item) => memberMatchesPhone(item, targetVariants));
 
   if (!member) {
     return { status: 'not_found' };
@@ -77,6 +89,11 @@ export async function findMemberByPhone(phone) {
     status: 'found',
     member
   };
+}
+
+function phoneTargetVariants(phone) {
+  const phones = Array.isArray(phone) ? phone : [phone];
+  return new Set(phones.flatMap((item) => [...phoneLookupKeys(item)]));
 }
 
 export async function extractMembersFromWorkbookBuffer(buffer) {
@@ -117,33 +134,13 @@ async function loadRegistry() {
   return cachedRegistry;
 }
 
-export async function shouldSendMemberLookupNotice() {
-  if (cachedRegistry && cachedRegistry.expiresAt > Date.now()) {
-    return false;
-  }
-
-  if (!settings.membersRemoteLookup || !settings.membersSpreadsheetUrl) {
-    return false;
-  }
-
-  return !(await localRegistryExists());
-}
-
-async function localRegistryExists() {
-  try {
-    await fs.access(localMembersPath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 async function readRegistry() {
+  const localIndexRegistry = await readLocalIndexRegistry();
   const localRegistry = await readLocalRegistry();
   const overridesRegistry = await readLocalOverridesRegistry();
 
-  if (localRegistry || overridesRegistry) {
-    return combineLocalRegistries(localRegistry, overridesRegistry);
+  if (localIndexRegistry || localRegistry || overridesRegistry) {
+    return combineLocalRegistries(overridesRegistry, localIndexRegistry, localRegistry);
   }
 
   if (!settings.membersRemoteLookup || !settings.membersSpreadsheetUrl) {
@@ -159,6 +156,30 @@ async function readRegistry() {
     source: 'spreadsheet',
     members
   };
+}
+
+async function readLocalIndexRegistry() {
+  try {
+    const content = await fs.readFile(localMembersIndexPath, 'utf8');
+    const parsed = JSON.parse(content);
+    const entries = Array.isArray(parsed) ? parsed : parsed.entries;
+
+    if (!Array.isArray(entries)) {
+      throw new Error('Formato inválido. Use { "entries": [...] }.');
+    }
+
+    return {
+      source: 'local-index',
+      members: entries.map(normalizeLocalIndexEntry).filter((member) => member.name && member.phoneHashes.size),
+      expiresAt: Date.now() + LOCAL_CACHE_TTL_MS
+    };
+  } catch (error) {
+    if (error.code === 'ENOENT') {
+      return null;
+    }
+
+    throw new Error(`Não foi possível ler ${localMembersIndexPath}. ${error.message}`);
+  }
 }
 
 async function readLocalRegistry() {
@@ -211,8 +232,30 @@ function normalizeLocalMember(member) {
   return {
     name: member.name || member.nome || '',
     phoneVariants: new Set(phones.flatMap((phone) => [...phoneVariants(phone)])),
+    isHolder: Boolean(member.isHolder || member.holder || member.titular),
+    worksheet: member.worksheet || member.sheet || '',
+    category: member.category || '',
     source: 'local'
   };
+}
+
+function normalizeLocalIndexEntry(entry) {
+  return {
+    name: decodeIndexText(entry.name),
+    phoneHashes: new Set([entry.key].filter(Boolean)),
+    isHolder: Boolean(entry.holder || entry.isHolder || entry.titular),
+    worksheet: decodeIndexText(entry.sheet || entry.worksheet),
+    category: decodeIndexText(entry.category),
+    source: 'local-index'
+  };
+}
+
+function decodeIndexText(value) {
+  try {
+    return Buffer.from(String(value || ''), 'base64').toString('utf8').trim();
+  } catch {
+    return '';
+  }
 }
 
 function readWorksheetMembers(worksheet) {
@@ -237,12 +280,86 @@ function readWorksheetMembers(worksheet) {
       name: firstFilledCellText(row, header.nameColumns),
       phones,
       worksheet: worksheet.name,
+      category: worksheetCategory(worksheet.name),
+      isHolder: isHolderRow(row, header),
       rowNumber,
       phoneVariants: variants
     });
   }
 
   return members;
+}
+
+function worksheetCategory(worksheetName) {
+  const name = normalizeText(worksheetName);
+
+  if (name.includes('desistente')) {
+    return 'desistente';
+  }
+
+  if (name.includes('patrimonial')) {
+    return 'patrimonial';
+  }
+
+  if (name.includes('contribuinte')) {
+    return 'contribuinte';
+  }
+
+  if (name.includes('diretoria')) {
+    return 'diretoria';
+  }
+
+  return '';
+}
+
+function isHolderRow(row, header) {
+  if (header.nameColumns.some((column) => cellHasHolderFill(row.getCell(column)))) {
+    return true;
+  }
+
+  return rowHolderFillCount(row) >= HOLDER_ROW_MIN_FILL_MATCHES;
+}
+
+function rowHolderFillCount(row) {
+  let count = 0;
+
+  row.eachCell({ includeEmpty: false }, (cell) => {
+    if (cellHasHolderFill(cell)) {
+      count += 1;
+    }
+  });
+
+  return count;
+}
+
+function cellHasHolderFill(cell) {
+  const color = cellFillColor(cell);
+
+  if (!color) {
+    return false;
+  }
+
+  if (color.theme !== undefined && holderFillThemes.has(String(color.theme))) {
+    return true;
+  }
+
+  return holderFillColors.has(normalizeFillArgb(color.argb));
+}
+
+function cellFillColor(cell) {
+  const fill = cell.fill;
+
+  if (!fill || fill.type !== 'pattern') {
+    return null;
+  }
+
+  return fill.fgColor || fill.bgColor || null;
+}
+
+function normalizeFillArgb(value) {
+  return String(value || '')
+    .replace(/^FF/i, '')
+    .toUpperCase();
 }
 
 function findHeader(worksheet) {
@@ -275,12 +392,57 @@ function findHeader(worksheet) {
         rowNumber,
         dddColumns,
         phoneColumns,
-        nameColumns
+        nameColumns: resolveNameColumns(worksheet, rowNumber, nameColumns, phoneColumns, dddColumns)
       };
     }
   }
 
   return null;
+}
+
+function resolveNameColumns(worksheet, headerRowNumber, nameColumns, phoneColumns, dddColumns) {
+  if (nameColumns.length) {
+    return nameColumns;
+  }
+
+  return inferNameColumns(worksheet, headerRowNumber, phoneColumns, dddColumns);
+}
+
+function inferNameColumns(worksheet, headerRowNumber, phoneColumns, dddColumns) {
+  const scores = new Map();
+  const excludedColumns = new Set([...phoneColumns, ...dddColumns]);
+  const maxCandidateColumn = Math.max(1, Math.min(...phoneColumns) - 1);
+  const lastRow = Math.min(worksheet.rowCount, headerRowNumber + 30);
+
+  for (let rowNumber = headerRowNumber + 1; rowNumber <= lastRow; rowNumber += 1) {
+    const row = worksheet.getRow(rowNumber);
+
+    for (let columnNumber = 1; columnNumber <= maxCandidateColumn; columnNumber += 1) {
+      if (excludedColumns.has(columnNumber)) {
+        continue;
+      }
+
+      const text = cellText(row.getCell(columnNumber));
+
+      if (looksLikePersonName(text)) {
+        scores.set(columnNumber, (scores.get(columnNumber) || 0) + 1);
+      }
+    }
+  }
+
+  const [bestColumn, bestScore] = [...scores].sort((left, right) => right[1] - left[1])[0] || [];
+  return bestScore ? [bestColumn] : [];
+}
+
+function looksLikePersonName(value) {
+  const text = String(value || '').trim();
+
+  if (!text || /[@\d]/.test(text) || text.length > 80) {
+    return false;
+  }
+
+  const words = text.match(/\p{L}{2,}/gu) || [];
+  return words.length >= 2;
 }
 
 function extractRowPhones(row, header) {
@@ -343,9 +505,69 @@ export function phoneVariants(value) {
   const rawDigits = onlyDigits(String(value || '').replace(/@.+$/, ''));
   const variants = new Set();
 
-  addBrazilPhoneVariants(variants, rawDigits);
+  for (const candidate of phoneDigitCandidates(rawDigits)) {
+    addBrazilPhoneVariants(variants, candidate);
+  }
 
   return variants;
+}
+
+export function phoneLookupKeys(value) {
+  return new Set(
+    [
+      ...[...phoneVariants(value)].filter(phoneHasAreaCode),
+      phoneSuffixLookupKey(value)
+    ].filter(Boolean)
+  );
+}
+
+export function phoneHasAreaCode(value) {
+  const digits = onlyDigits(value);
+
+  if (digits.startsWith('55')) {
+    return digits.length === 12 || digits.length === 13;
+  }
+
+  return digits.length === 10 || digits.length === 11;
+}
+
+export function phoneSuffixLookupKey(value) {
+  const suffix = phoneSuffix8(value);
+  return suffix ? `suffix8:${suffix}` : '';
+}
+
+export function phoneSuffix8(value) {
+  const digits = onlyDigits(String(value || '').replace(/@.+$/, ''));
+  return digits.length >= 8 ? digits.slice(-8) : '';
+}
+
+function phoneDigitCandidates(rawDigits) {
+  const candidates = new Set([rawDigits]);
+
+  addDialingPrefixCandidates(candidates, rawDigits);
+
+  if (rawDigits.startsWith('55') && rawDigits.length > 11) {
+    addDialingPrefixCandidates(candidates, rawDigits.slice(2));
+  }
+
+  return [...candidates].filter(Boolean);
+}
+
+function addDialingPrefixCandidates(candidates, digits) {
+  if (!digits) {
+    return;
+  }
+
+  candidates.add(digits);
+
+  if (digits.startsWith('0')) {
+    candidates.add(digits.slice(1));
+  }
+
+  // Brazil long-distance format can include 0 + carrier code + DDD + number.
+  if (digits.length >= 13 && digits.startsWith('0')) {
+    candidates.add(digits.slice(3));
+  }
 }
 
 function addBrazilPhoneVariants(variants, rawDigits) {
@@ -400,6 +622,28 @@ function normalizeDdd(value) {
 
 function uniqueValues(values) {
   return [...new Set(values.filter(Boolean))];
+}
+
+export function phoneHash(value) {
+  return crypto.createHash('sha256').update(String(value || '')).digest('hex');
+}
+
+function memberMatchesPhone(member, targetVariants) {
+  if (member.phoneVariants && intersects(member.phoneVariants, targetVariants)) {
+    return true;
+  }
+
+  if (!member.phoneHashes?.size) {
+    return false;
+  }
+
+  for (const variant of targetVariants) {
+    if (member.phoneHashes.has(phoneHash(variant))) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 function intersects(left, right) {
