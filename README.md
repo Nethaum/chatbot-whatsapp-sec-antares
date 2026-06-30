@@ -1,169 +1,277 @@
-# Chatbot WhatsApp para Clube
+# Chatbot WhatsApp para Atendimento de Clube
 
-Projeto local e gratuito para atendimento simples pelo WhatsApp Web. Ele responde perguntas comuns da SEC Antares: reservas, eventos, mensalidade, associação e feedback.
+Sistema local de atendimento automatizado via WhatsApp Web, desenvolvido para responder dúvidas frequentes da SEC Antares e auxiliar a secretaria nos fluxos de reservas, eventos, mensalidade, associação e feedback.
 
-## Importante
+O projeto roda no computador do operador, usa planilhas como fonte de dados para consultas específicas e mantém informações sensíveis fora do repositório.
 
-Esta versão usa `whatsapp-web.js`, que controla o WhatsApp Web pelo navegador. Ela roda localmente e não exige mensalidade, mas não é a API oficial da Meta. Para uso comercial em grande escala, envio em massa, campanhas ou operação crítica, o caminho oficial é a WhatsApp Business Platform, que pode ter custos por conversa ou mensagem e regras de template.
+## Funcionalidades
 
-Use este bot com baixo volume, sem spam e com um número que você aceite testar primeiro.
+- Menu principal com saudação conforme o horário.
+- Atendimento por palavras-chave e opções numéricas.
+- Consulta de eventos em planilha online antes de responder ao usuário.
+- Fluxo de reservas para salões, churrasqueira e quadra de areia.
+- Consulta de disponibilidade de datas e sugestões alternativas.
+- Consulta de horários da quadra de areia conforme regras da agenda.
+- Mensagens prontas para encaminhamento ao setor responsável.
+- Menu de mensalidade com valores, vencimento e contato da tesouraria.
+- Menu de associação com planos, benefícios e envio de materiais.
+- Coleta de feedback com finalização por palavra-chave.
+- Identificação silenciosa de sócios por telefone, usando índice local codificado.
+- Proteção contra instâncias duplicadas e respostas repetidas.
+- Reconexão automática em falhas transitórias do WhatsApp Web.
+- Inicialização automática no Windows por tarefa agendada.
 
 ## Requisitos
 
-- Node.js 18 ou superior
-- WhatsApp instalado no celular
-- Computador ligado enquanto o bot estiver atendendo
+- Node.js 18 ou superior.
+- WhatsApp ativo no celular.
+- Computador ligado enquanto o atendimento estiver em execução.
+- Acesso às planilhas usadas pelo clube, quando houver consultas online.
 
-## Como configurar
+## Instalação
 
-1. Instale as dependências:
+Instale as dependências:
 
-   ```powershell
-   npm.cmd install
-   ```
+```powershell
+npm.cmd install
+```
 
-2. Ajuste os dados do clube em `data/club.json`.
+Copie o arquivo de exemplo de variáveis, se precisar personalizar fontes ou comportamento:
 
-3. Rode o bot:
+```powershell
+Copy-Item .env.example .env
+```
 
-   ```powershell
-   npm.cmd start
-   ```
+Edite `data/club.json` para alterar nome do clube, menus, contatos, valores, textos de atendimento e materiais anexos.
 
-4. Escaneie o QR code no terminal:
+## Execução
 
-   WhatsApp > Aparelhos conectados > Conectar um aparelho
+Inicie o bot:
 
-Depois do primeiro login, a sessão fica salva na pasta `.wwebjs_auth/`.
+```powershell
+npm.cmd start
+```
 
-Mantenha apenas uma janela do bot aberta. Se o bot for iniciado duas vezes, as mensagens podem sair duplicadas; esta versão cria uma trava local e encerra a segunda instância para evitar esse problema.
+No primeiro acesso, escaneie o QR Code pelo celular:
 
-O bot também guarda mensagens e respostas recentes para evitar repetições quando o WhatsApp Web dispara o mesmo evento mais de uma vez.
+```text
+WhatsApp > Aparelhos conectados > Conectar um aparelho
+```
 
-Depois de alterar o código ou os dados do clube, reinicie com:
+Depois da autenticação, a sessão fica salva localmente em `.wwebjs_auth/`.
+
+Para reiniciar após alterações:
 
 ```powershell
 npm.cmd run restart
 ```
 
-Se precisar escanear o QR Code novamente, limpe a sessão salva e reinicie com:
+Para encerrar o bot:
+
+```powershell
+npm.cmd run stop
+```
+
+Para limpar a sessão salva e gerar um novo QR Code:
 
 ```powershell
 npm.cmd run reset-session
 ```
 
-Para conferir sintaxe, fluxos principais e proteção contra duplicidade:
-
-```powershell
-npm.cmd run check
-```
-
 ## Inicialização automática no Windows
 
-Para iniciar o bot automaticamente sempre que entrar na sua conta do Windows:
+Para iniciar o bot automaticamente ao entrar na conta do Windows:
 
 ```powershell
 npm.cmd run autostart:install
 ```
 
-O bot será executado em segundo plano no próximo login. A saída fica registrada em `.bot_state\autostart.log`.
-
-Para consultar ou remover a tarefa:
+Para consultar o status ou remover a tarefa:
 
 ```powershell
 npm.cmd run autostart:status
 npm.cmd run autostart:uninstall
 ```
 
-## Sessão do WhatsApp
+A saída da execução automática fica em `.bot_state/autostart.log`.
 
-O bot usa a sessão salva pelo WhatsApp Web em `.wwebjs_auth/`. Isso reduz a necessidade de escanear o QR Code novamente, mas não impede completamente que o WhatsApp encerre a sessão por segurança, mudança no celular, muito tempo offline ou conflito com outro WhatsApp Web.
+## Configuração
 
-Para reduzir quedas:
-
-- Mantenha o computador ligado, sem suspender ou hibernar, e com internet estável.
-- Evite abrir o mesmo número em outras janelas do WhatsApp Web.
-- Não apague a pasta `.wwebjs_auth/`, a menos que queira forçar um QR Code novo.
-- Deixe o bot rodando continuamente.
-
-O bot verifica a sessão a cada 5 minutos e tenta reconectar automaticamente quando detectar desconexão. Esses tempos podem ser ajustados no `.env`:
+As principais variáveis podem ser ajustadas no `.env`:
 
 ```env
+BOT_NAME=Assistente do Clube
+RESPOND_IN_GROUPS=false
+GROUP_COMMAND_PREFIX=!clube
+LOG_MESSAGES=false
+AUTH_TIMEOUT_MS=120000
+READY_TIMEOUT_MS=180000
 SESSION_HEALTH_CHECK_MS=300000
 RECONNECT_DELAY_MS=15000
-AUTH_TIMEOUT_MS=120000
+DEFAULT_PHONE_DDD=47
+MEMBERS_SOURCE=
+MEMBERS_REMOTE_LOOKUP=false
 ```
 
-## Como testar
+As URLs das planilhas de eventos, valores e quadra também podem ser configuradas pelo `.env`:
 
-Envie mensagens para o número conectado, por exemplo:
-
-- `oi`
-- `eventos`
-- `mensalidade`
-- `quero ser sócio`
-- `feedback`
-
-## Eventos online
-
-Quando o usuário pede eventos, o bot baixa a planilha definida em `EVENTS_SPREADSHEET_URL` e atualiza a resposta antes de enviá-la pelo WhatsApp.
-
-Regras usadas na aba `Agenda`:
-
-- A linha 4 deve conter os cabeçalhos.
-- A coluna B deve conter a data.
-- A coluna C deve conter `X`.
-- As colunas `Tipo de evento` e `HORÁRIO` devem estar preenchidas.
-- O bot mostra apenas eventos futuros do ano corrente. A partir de outubro, também aceita eventos de até 3 meses à frente, mesmo que entrem no ano seguinte.
-
-Se nenhum registro cumprir os critérios, a resposta será:
-
-```text
-🎊 Eventos
-
-* 📭 Nenhum evento programado
+```env
+EVENTS_SPREADSHEET_URL=
+PRICING_SPREADSHEET_URL=
+COURT_SPREADSHEET_URL=
 ```
+
+## Lista de sócios
+
+A identificação de sócios é feita de forma local e silenciosa. O bot não pede identificação ao usuário apenas por não encontrar o número no cadastro.
+
+Para atualizar o índice local a partir da planilha de sócios:
+
+```powershell
+npm.cmd run members:update
+```
+
+Também é possível informar a fonte diretamente:
+
+```powershell
+npm.cmd run members:update -- "C:\caminho\lista-socios.xlsx"
+```
+
+O comando gera `data/members.index.json`, arquivo local e ignorado pelo Git. Esse índice armazena chaves codificadas para consulta por telefone e não deve ser enviado ao repositório.
+
+Para testar a localização de um telefone:
+
+```powershell
+npm.cmd run members:find -- "+55 47 99999-0000"
+```
+
+O sistema considera variações comuns de telefone:
+
+- Com ou sem código do país.
+- Com ou sem DDD.
+- Com ou sem nono dígito.
+- Com prefixo de operadora.
+- Final de 8 dígitos, apenas quando não houver duplicidade no índice.
+
+## Atualização mensal da lista de sócios
+
+Para criar a tarefa mensal de atualização:
+
+```powershell
+npm.cmd run members:update:install
+```
+
+Para consultar ou remover:
+
+```powershell
+npm.cmd run members:update:status
+npm.cmd run members:update:uninstall
+```
+
+## Eventos
+
+Quando o usuário solicita eventos, o bot consulta a planilha configurada em `EVENTS_SPREADSHEET_URL` antes de responder.
+
+Critérios usados:
+
+- A coluna de marcação deve conter `X`.
+- As colunas de tipo de evento e horário devem estar preenchidas.
+- Apenas eventos futuros do ano corrente são exibidos.
+- No fim do ano, podem ser exibidos eventos dos próximos meses do ano seguinte, dentro do limite configurado no fluxo.
+
+## Reservas
+
+O menu de reservas permite consultar ambientes e datas.
+
+Para salões e churrasqueira, o bot:
+
+- Solicita a data desejada.
+- Consulta a agenda de eventos.
+- Informa se a data está disponível.
+- Sugere datas alternativas no mesmo dia da semana, quando necessário.
+- Confirma data, nome e horário antes de registrar a solicitação.
+
+Para a quadra de areia, o bot:
+
+- Solicita a data desejada.
+- Consulta a planilha da agenda da quadra.
+- Exibe horários disponíveis em dias úteis.
+- Em fins de semana, exibe apenas horários indisponíveis quando houver.
+
+Após receber os dados necessários, o bot apresenta o resumo da solicitação e informa o setor responsável.
 
 ## Grupos
 
-Por padrão, o bot não responde em grupos. Para permitir respostas em grupos, crie um arquivo `.env` com:
+Por padrão, o bot não responde em grupos. Para habilitar:
 
 ```env
 RESPOND_IN_GROUPS=true
 GROUP_COMMAND_PREFIX=!clube
 ```
 
-Em grupos, use mensagens como:
+Exemplo de uso em grupo:
 
 ```text
-!clube agenda
+!clube eventos
 ```
 
-## Logs
+## Logs e privacidade
 
-Por padrão, as conversas não são gravadas. Para gravar um arquivo local em `logs/conversations.jsonl`, use:
+Por padrão, conversas não são gravadas.
+
+Para habilitar logs locais:
 
 ```env
 LOG_MESSAGES=true
 ```
 
-Evite registrar dados pessoais se isso não for necessário para a operação do clube.
+Os logs ficam em `logs/conversations.jsonl`. Evite habilitar esse recurso se não houver necessidade operacional.
 
-## Personalização rápida
+Arquivos locais ignorados pelo Git:
 
-Edite `data/club.json` para trocar:
+- `.env`
+- `.wwebjs_auth/`
+- `.wwebjs_cache/`
+- `.bot_state/`
+- `logs/`
+- `data/members.index.json`
+- `data/members.json`
+- `data/members.overrides.json`
 
-- Nome do clube
-- Endereço e link do mapa
-- Mensalidade
-- Planos de associação
-- Contatos
-- Feedback
-- Texto de encaminhamento para atendimento humano
+## Validação
 
-## Próximos passos possíveis
+Para conferir sintaxe, fluxos principais, normalização da lista de sócios e proteção contra duplicidade:
 
-- Adicionar cadastro de interessados em CSV
-- Integrar com agenda local do clube
-- Adicionar respostas por modalidade, como tênis, futebol, natação e eventos sociais
-- Conectar com um modelo local via Ollama para respostas mais livres
+```powershell
+npm.cmd run check
+```
+
+Esse comando executa:
+
+- `check:syntax`
+- `check:flows`
+- `check:members`
+- `check:guard`
+
+## Estrutura do projeto
+
+```text
+assets/              Materiais enviados pelo bot
+data/                Configurações públicas e exemplos
+scripts/             Rotinas de operação, teste e atualização
+src/                 Código principal do bot
+.env.example         Exemplo de configuração local
+package.json         Scripts e dependências
+README.md            Documentação do projeto
+```
+
+## Observações de uso
+
+Este projeto usa `whatsapp-web.js`, que automatiza o WhatsApp Web pelo navegador. Ele é adequado para atendimento local e de baixo volume, mas não substitui a WhatsApp Business Platform em operações comerciais de grande escala, campanhas ou envio em massa.
+
+Para reduzir instabilidade:
+
+- Mantenha o computador ligado e conectado à internet.
+- Evite usar o mesmo número simultaneamente em outras sessões do WhatsApp Web.
+- Não apague `.wwebjs_auth/`, a menos que queira forçar novo QR Code.
+- Reinicie o bot após mudanças de código ou configuração.
