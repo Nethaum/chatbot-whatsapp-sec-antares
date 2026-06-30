@@ -681,7 +681,7 @@ function handleReservationDetailsInput(input, state, club, chatId) {
 
   if (details.name && details.time) {
     clearReservationState(chatId);
-    return withParentShortcuts(reservationRequestReceived(choice, details, state.selectedDate), 'reservations');
+    return withParentShortcuts(reservationRequestReceived(choice, details, state.selectedDate, club), 'reservations');
   }
 
   reservationStates.set(chatId, {
@@ -1216,15 +1216,30 @@ function askAnotherReservationDate(choice) {
   ].join('\n');
 }
 
-function reservationRequestReceived(choice, details, selectedDate) {
+function reservationRequestReceived(choice, details, selectedDate, club) {
   return [
     `${choice.emoji} ${choice.name}`,
     '',
     '✅ Solicitação recebida.',
     ...formatKnownReservationDetails(details, selectedDate),
     '',
-    '📞 Nossa equipe confirmará a reserva e retornará o contato em breve.'
+    '📞 Nossa equipe confirmará a reserva e retornará o contato em breve.',
+    ...formatReservationContact(choice, club)
   ].join('\n');
+}
+
+function formatReservationContact(choice, club) {
+  const contact = findContactByArea(club, choice.type === 'court' ? 'Esportes' : 'Social');
+
+  if (!contact) {
+    return [];
+  }
+
+  return ['', `📲 Contato responsável: ${contact.area} - ${contact.phone}`];
+}
+
+function findContactByArea(club, area) {
+  return club.contacts?.find((contact) => normalizeText(contact.area) === normalizeText(area));
 }
 
 function reservationRequestPaused(choice) {

@@ -74,7 +74,7 @@
     ],
     "note": "👨‍👩‍👧‍👦 O sócio titular pode compartilhar seu título, patrimonial ou contribuinte, exclusivamente com seus dependentes.",
     "dependentNote": "📌 Dependentes são as pessoas vinculadas ao cadastro do sócio titular; a secretaria confirma o vínculo durante o atendimento.",
-    "billingContact": "(00) 00000-0000"
+    "billingContact": "Tesouraria: +55 47 9767-0771"
   },
   "reservations": {
     "intro": "Selecione o ambiente que deseja a reserva:",
@@ -116,14 +116,19 @@
   ],
   "contacts": [
     {
-      "area": "Secretaria",
-      "name": "Atendimento",
-      "phone": "(00) 00000-0000"
+      "area": "Esportes",
+      "name": "Agenda de reserva da Quadra de Areia",
+      "phone": "+55 47 9928-0435"
     },
     {
-      "area": "Financeiro",
+      "area": "Tesouraria",
       "name": "Tesouraria",
-      "phone": "(00) 00000-0000"
+      "phone": "+55 47 9767-0771"
+    },
+    {
+      "area": "Social",
+      "name": "Agenda de reservas dos salões",
+      "phone": "+55 47 9767-0749"
     }
   ],
   "feedback": {
