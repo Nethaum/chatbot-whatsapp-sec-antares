@@ -27,6 +27,10 @@ export const settings = {
   courtSpreadsheetUrl:
     process.env.COURT_SPREADSHEET_URL ||
     'https://1drv.ms/x/c/4f4433ee4b2fea3a/IQA66i9L7jNEIIBPO2YAAAAAAQMrQKACDoF8cSnU9Pimxos?download=1',
+  membersRemoteLookup: process.env.MEMBERS_REMOTE_LOOKUP === 'true',
+  membersSpreadsheetUrl:
+    process.env.MEMBERS_SPREADSHEET_URL ||
+    'https://onedrive.live.com/personal/4f4433ee4b2fea3a/_layouts/15/doc.aspx?resid=4b2fea3a-33ee-2044-804f-160100000000&cid=4f4433ee4b2fea3a',
   logsDir: path.join(rootDir, 'logs')
 };
 

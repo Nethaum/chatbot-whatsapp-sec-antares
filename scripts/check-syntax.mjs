@@ -6,6 +6,7 @@ const files = [
   'src/replyLexicon.js',
   'src/config.js',
   'src/messageGuard.js',
+  'src/memberRegistry.js',
   'src/eventAgenda.js',
   'src/workbookDownloader.js',
   'src/reservationPricing.js',
@@ -13,7 +14,8 @@ const files = [
   'src/dateUtils.js',
   'src/excelUtils.js',
   'src/logger.js',
-  'src/text.js'
+  'src/text.js',
+  'scripts/update-members-cache.mjs'
 ];
 
 for (const file of files) {

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { settings, loadClub } from './config.js';
 import { logConversation } from './logger.js';
 import { acquireInstanceLock, shouldProcessMessage, shouldSendReply } from './messageGuard.js';
-import { buildReply, buildWaitNotice } from './replies.js';
+import { buildPreflightReply, buildPreflightWaitNotice, buildReply, buildWaitNotice } from './replies.js';
 import { compactWhitespace } from './text.js';
 
 const { Client, LocalAuth, MessageMedia } = pkg;
@@ -149,6 +149,24 @@ async function handleMessage(message) {
 
     const cleanBody = isGroup ? removeGroupPrefix(body) : body;
     const chatId = chat.id?._serialized || message.from;
+    const userPhone = isGroup ? message.author : message.from;
+    const replyContext = {
+      chatId,
+      userPhone
+    };
+    const preflightWaitNotice = await buildPreflightWaitNotice(cleanBody, replyContext);
+
+    if (preflightWaitNotice) {
+      await sendReply(chat, preflightWaitNotice);
+    }
+
+    const preflightReply = await buildPreflightReply(cleanBody, club, replyContext);
+
+    if (preflightReply) {
+      await sendReply(chat, preflightReply);
+      return;
+    }
+
     const waitNotice = buildWaitNotice(cleanBody, { chatId });
 
     if (waitNotice) {
@@ -156,7 +174,8 @@ async function handleMessage(message) {
     }
 
     const reply = await buildReply(cleanBody, club, {
-      chatId
+      ...replyContext,
+      memberPreflightDone: true
     });
 
     if (!reply) {

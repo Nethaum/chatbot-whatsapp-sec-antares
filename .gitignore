@@ -6,6 +6,7 @@ node_modules/
 .wwebjs_cache/
 .bot_state/
 logs/
+data/members.json
 npm-debug.log*
 *.log
 .DS_Store

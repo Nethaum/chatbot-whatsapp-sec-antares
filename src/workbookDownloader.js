@@ -127,7 +127,30 @@ function toDownloadUrl(url) {
     parsedUrl.searchParams.set('download', '1');
   }
 
+  if (parsedUrl.hostname === 'onedrive.live.com' && shouldUseOneDriveDownloadEndpoint(parsedUrl)) {
+    const downloadUrl = new URL('https://onedrive.live.com/download');
+    copySearchParam(parsedUrl, downloadUrl, 'resid');
+    copySearchParam(parsedUrl, downloadUrl, 'cid');
+    copySearchParam(parsedUrl, downloadUrl, 'authkey');
+    return downloadUrl.toString();
+  }
+
   return parsedUrl.toString();
+}
+
+function shouldUseOneDriveDownloadEndpoint(url) {
+  return (
+    url.searchParams.has('resid') &&
+    (url.pathname.includes('/doc.aspx') || url.pathname.includes('/view.aspx') || url.pathname.includes('/embed'))
+  );
+}
+
+function copySearchParam(fromUrl, toUrl, name) {
+  const value = fromUrl.searchParams.get(name);
+
+  if (value) {
+    toUrl.searchParams.set(name, value);
+  }
 }
 
 function isXlsx(buffer, contentType) {

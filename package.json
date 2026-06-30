@@ -1,6 +1,6 @@
 {
   "name": "chatbot-whatsapp-clube",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Chatbot local e gratuito para WhatsApp Web, pensado para atendimento de clube.",
   "type": "module",
   "private": true,
@@ -13,6 +13,10 @@
     "autostart:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/status-autostart.ps1",
     "autostart:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-autostart.ps1",
     "check-assets": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-assets.ps1",
+    "members:update": "node scripts/update-members-cache.mjs",
+    "members:update:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-members-update-task.ps1",
+    "members:update:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/status-members-update-task.ps1",
+    "members:update:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-members-update-task.ps1",
     "dev": "node --watch src/index.js",
     "check": "npm run check:syntax && npm run check:flows && npm run check:guard",
     "check:syntax": "node scripts/check-syntax.mjs",

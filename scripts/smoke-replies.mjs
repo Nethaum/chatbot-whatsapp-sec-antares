@@ -12,10 +12,29 @@ async function ask(input, chatId) {
   return replyText(await buildReply(input, club, { chatId }));
 }
 
+async function askAsMember(input, chatId) {
+  return replyText(
+    await buildReply(input, club, {
+      chatId,
+      memberPreflightDone: true,
+      member: { name: 'Maria da Silva' }
+    })
+  );
+}
+
 const mainMenu = await ask('oi', 'smoke-main-menu');
 assert.match(mainMenu, /Bem-vindo\(a\)/);
 assert.match(mainMenu, /Reservas/);
 assert.match(mainMenu, /Feedback/);
+
+const memberMenu = await askAsMember('oi', 'smoke-member-menu');
+assert.match(memberMenu, /Boa (dia|tarde|noite), Maria!/);
+assert.doesNotMatch(memberMenu, /Maria da Silva/);
+
+const duesMenu = await ask('3', 'smoke-dues');
+assert.match(duesMenu, /Tesouraria/);
+assert.match(duesMenu, /\+55 47 99767-0771/);
+assert.match(duesMenu, /https:\/\/wa\.me\/5547997670771/);
 
 assert.equal(await ask('enviar', 'smoke-outside-feedback'), null);
 
@@ -50,5 +69,13 @@ assert.match(emptyFeedbackFinished, /\*menu\*/);
 await ask('1', 'smoke-reservations');
 const reservationFinished = await ask('fim', 'smoke-reservations');
 assert.match(reservationFinished, /Atendimento encerrado/);
+
+await askAsMember('1', 'smoke-member-reservation');
+await askAsMember('11', 'smoke-member-reservation');
+await askAsMember('30/12/2026', 'smoke-member-reservation');
+const memberReservationPrompt = await askAsMember('sim', 'smoke-member-reservation');
+assert.match(memberReservationPrompt, /Nome: Maria da Silva/);
+assert.match(memberReservationPrompt, /Horário de início do evento/);
+assert.doesNotMatch(memberReservationPrompt, /Nome completo do responsável/);
 
 console.log('Fluxos essenciais conferidos.');
