@@ -22,7 +22,19 @@ const phoneHeaderWords = [
   'whatsapp',
   'whats',
   'fone',
-  'contato'
+  'contato',
+  'numero',
+  'numero telefone',
+  'numero celular',
+  'nro',
+  'tel'
+];
+
+const dddHeaderWords = [
+  'ddd',
+  'codigo de area',
+  'cod area',
+  'area'
 ];
 
 const nameHeaderWords = [
@@ -194,7 +206,7 @@ function readWorksheetMembers(worksheet) {
 
   for (let rowNumber = header.rowNumber + 1; rowNumber <= worksheet.rowCount; rowNumber += 1) {
     const row = worksheet.getRow(rowNumber);
-    const phones = header.phoneColumns.flatMap((column) => extractPhones(cellText(row.getCell(column))));
+    const phones = extractRowPhones(row, header);
     const variants = new Set(phones.flatMap((phone) => [...phoneVariants(phone)]));
 
     if (!variants.size) {
@@ -218,6 +230,7 @@ function findHeader(worksheet) {
 
   for (let rowNumber = 1; rowNumber <= lastRow; rowNumber += 1) {
     const row = worksheet.getRow(rowNumber);
+    const dddColumns = [];
     const phoneColumns = [];
     const nameColumns = [];
 
@@ -228,6 +241,10 @@ function findHeader(worksheet) {
         phoneColumns.push(columnNumber);
       }
 
+      if (matchesHeader(headerText, dddHeaderWords)) {
+        dddColumns.push(columnNumber);
+      }
+
       if (matchesHeader(headerText, nameHeaderWords)) {
         nameColumns.push(columnNumber);
       }
@@ -236,6 +253,7 @@ function findHeader(worksheet) {
     if (phoneColumns.length) {
       return {
         rowNumber,
+        dddColumns,
         phoneColumns,
         nameColumns
       };
@@ -245,12 +263,37 @@ function findHeader(worksheet) {
   return null;
 }
 
+function extractRowPhones(row, header) {
+  const ddds = header.dddColumns.flatMap((column) => extractDdds(cellText(row.getCell(column))));
+  const phones = header.phoneColumns.flatMap((column) => extractPhones(cellText(row.getCell(column))));
+  const combinedPhones = [];
+
+  for (const phone of phones) {
+    combinedPhones.push(phone);
+
+    const digits = onlyDigits(phone);
+
+    if ((digits.length === 8 || digits.length === 9) && ddds.length) {
+      combinedPhones.push(...ddds.map((ddd) => `${ddd}${digits}`));
+    }
+  }
+
+  return uniqueValues(combinedPhones);
+}
+
 function matchesHeader(headerText, words) {
   if (!headerText) {
     return false;
   }
 
   return words.some((word) => headerText === normalizeText(word) || headerText.includes(normalizeText(word)));
+}
+
+function extractDdds(value) {
+  return uniqueValues(
+    String(value || '')
+      .match(/\d{2}/g) || []
+  );
 }
 
 function firstFilledCellText(row, columns) {
@@ -269,15 +312,15 @@ function extractPhones(value) {
   const matches = String(value || '').match(/\+?\d[\d\s().-]{7,}\d/g) || [];
 
   if (matches.length) {
-    return matches;
+    return uniqueValues(matches);
   }
 
-  const digits = String(value || '').replace(/\D/g, '');
+  const digits = onlyDigits(value);
   return digits.length >= 8 ? [digits] : [];
 }
 
 export function phoneVariants(value) {
-  const rawDigits = String(value || '').replace(/@.+$/, '').replace(/\D/g, '');
+  const rawDigits = onlyDigits(String(value || '').replace(/@.+$/, ''));
   const variants = new Set();
 
   addBrazilPhoneVariants(variants, rawDigits);
@@ -288,6 +331,12 @@ export function phoneVariants(value) {
 function addBrazilPhoneVariants(variants, rawDigits) {
   if (!rawDigits) {
     return;
+  }
+
+  const defaultDdd = normalizeDdd(settings.defaultPhoneDdd);
+
+  if ((rawDigits.length === 8 || rawDigits.length === 9) && defaultDdd) {
+    addBrazilPhoneVariants(variants, `${defaultDdd}${rawDigits}`);
   }
 
   const withoutCountry = rawDigits.startsWith('55') && rawDigits.length > 11 ? rawDigits.slice(2) : rawDigits;
@@ -313,11 +362,24 @@ function withBrazilCountryCode(value) {
 }
 
 function addPhoneVariant(variants, value) {
-  const digits = String(value || '').replace(/\D/g, '');
+  const digits = onlyDigits(value);
 
   if (digits.length >= 8) {
     variants.add(digits);
   }
+}
+
+function onlyDigits(value) {
+  return String(value || '').replace(/\D/g, '');
+}
+
+function normalizeDdd(value) {
+  const digits = onlyDigits(value);
+  return digits.length === 2 ? digits : '';
+}
+
+function uniqueValues(values) {
+  return [...new Set(values.filter(Boolean))];
 }
 
 function intersects(left, right) {

@@ -27,6 +27,7 @@ export const settings = {
   courtSpreadsheetUrl:
     process.env.COURT_SPREADSHEET_URL ||
     'https://1drv.ms/x/c/4f4433ee4b2fea3a/IQA66i9L7jNEIIBPO2YAAAAAAQMrQKACDoF8cSnU9Pimxos?download=1',
+  defaultPhoneDdd: process.env.DEFAULT_PHONE_DDD || '47',
   membersRemoteLookup: process.env.MEMBERS_REMOTE_LOOKUP === 'true',
   membersSpreadsheetUrl:
     process.env.MEMBERS_SPREADSHEET_URL ||

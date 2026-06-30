@@ -12,19 +12,28 @@ if (!source) {
   process.exit(1);
 }
 
-const buffer = isUrl(source) ? await downloadWorkbook(source) : await fs.readFile(source);
-const members = await extractMembersFromWorkbookBuffer(buffer);
-const payload = {
-  updatedAt: new Date().toISOString(),
-  source: isUrl(source) ? 'url' : source,
-  members: members.map((member) => ({
-    name: member.name,
-    phones: member.phones
-  }))
-};
+try {
+  const buffer = isUrl(source) ? await downloadWorkbook(source) : await fs.readFile(source);
+  const members = await extractMembersFromWorkbookBuffer(buffer);
+  const payload = {
+    updatedAt: new Date().toISOString(),
+    source: isUrl(source) ? 'url' : source,
+    members: members.map((member) => ({
+      name: member.name,
+      phones: member.phones
+    }))
+  };
 
-await fs.writeFile(outputPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
-console.log(`Lista local de sócios atualizada: ${members.length} registro(s).`);
+  await fs.writeFile(outputPath, `${JSON.stringify(payload, null, 2)}\n`, 'utf8');
+  console.log(`Lista local de sócios atualizada: ${members.length} registro(s).`);
+} catch (error) {
+  console.error('Nao foi possivel atualizar a lista local de socios.');
+  console.error(`Fonte usada: ${source}`);
+  console.error(`Erro: ${error.message}`);
+  console.error('Se a fonte for um link do OneDrive, confirme se ele baixa um arquivo .xlsx direto.');
+  console.error('Alternativa: baixe a planilha e rode npm.cmd run members:update -- "C:\\caminho\\lista.xlsx".');
+  process.exit(1);
+}
 
 function isUrl(value) {
   return /^https?:\/\//i.test(String(value || ''));

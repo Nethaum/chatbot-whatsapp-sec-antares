@@ -14,13 +14,15 @@
     "autostart:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-autostart.ps1",
     "check-assets": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-assets.ps1",
     "members:update": "node scripts/update-members-cache.mjs",
+    "members:find": "node scripts/find-member.mjs",
     "members:update:install": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-members-update-task.ps1",
     "members:update:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/status-members-update-task.ps1",
     "members:update:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-members-update-task.ps1",
     "dev": "node --watch src/index.js",
-    "check": "npm run check:syntax && npm run check:flows && npm run check:guard",
+    "check": "npm run check:syntax && npm run check:flows && npm run check:members && npm run check:guard",
     "check:syntax": "node scripts/check-syntax.mjs",
     "check:flows": "node scripts/smoke-replies.mjs",
+    "check:members": "node scripts/smoke-members.mjs",
     "check:guard": "node scripts/smoke-message-guard.mjs"
   },
   "dependencies": {

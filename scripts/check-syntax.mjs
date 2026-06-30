@@ -15,7 +15,9 @@ const files = [
   'src/excelUtils.js',
   'src/logger.js',
   'src/text.js',
-  'scripts/update-members-cache.mjs'
+  'scripts/update-members-cache.mjs',
+  'scripts/find-member.mjs',
+  'scripts/smoke-members.mjs'
 ];
 
 for (const file of files) {
