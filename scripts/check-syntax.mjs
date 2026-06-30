@@ -18,7 +18,9 @@ const files = [
   'src/text.js',
   'scripts/update-members-cache.mjs',
   'scripts/find-member.mjs',
-  'scripts/smoke-members.mjs'
+  'scripts/test-socios.mjs',
+  'scripts/test-fluxos.mjs',
+  'scripts/test-duplicidade.mjs'
 ];
 
 for (const file of files) {

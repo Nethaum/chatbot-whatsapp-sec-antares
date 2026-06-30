@@ -5,7 +5,7 @@ import { shouldProcessMessage, shouldSendReply } from '../src/messageGuard.js';
 const timestamp = Math.floor(Date.now() / 1000);
 const runId = crypto.randomUUID();
 const baseMessage = {
-  from: `smoke-${runId}@c.us`,
+  from: `test-${runId}@c.us`,
   timestamp,
   body: 'Bom dia'
 };
@@ -13,7 +13,7 @@ const baseMessage = {
 assert.equal(
   shouldProcessMessage({
     ...baseMessage,
-    id: { _serialized: `smoke-${runId}-a` }
+    id: { _serialized: `test-${runId}-a` }
   }),
   true
 );
@@ -21,12 +21,12 @@ assert.equal(
 assert.equal(
   shouldProcessMessage({
     ...baseMessage,
-    id: { _serialized: `smoke-${runId}-b` }
+    id: { _serialized: `test-${runId}-b` }
   }),
   false
 );
 
-const chatId = `smoke-chat-${runId}@c.us`;
+const chatId = `test-chat-${runId}@c.us`;
 const replyText = `Resposta ${timestamp}`;
 const menuText = [
   '👋 Bom dia! Bem-vindo(a) ao atendimento da SEC Antares!',

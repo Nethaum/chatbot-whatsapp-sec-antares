@@ -21,9 +21,9 @@
     "dev": "node --watch src/index.js",
     "check": "npm run check:syntax && npm run check:flows && npm run check:members && npm run check:guard",
     "check:syntax": "node scripts/check-syntax.mjs",
-    "check:flows": "node scripts/smoke-replies.mjs",
-    "check:members": "node scripts/smoke-members.mjs",
-    "check:guard": "node scripts/smoke-message-guard.mjs"
+    "check:flows": "node scripts/test-fluxos.mjs",
+    "check:members": "node scripts/test-socios.mjs",
+    "check:guard": "node scripts/test-duplicidade.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
