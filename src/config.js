@@ -8,6 +8,8 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 const clubPath = path.join(rootDir, 'data', 'club.json');
+const defaultEventsSpreadsheetUrl =
+  'https://1drv.ms/x/c/4f4433ee4b2fea3a/IQA66i9L7jNEIIBPN2YAAAAAAVpcm1ifyE8ldoGNslNcYzc?download=1';
 
 export const settings = {
   botName: process.env.BOT_NAME || 'Assistente do Clube',
@@ -18,12 +20,8 @@ export const settings = {
   readyTimeoutMs: positiveInteger(process.env.READY_TIMEOUT_MS, 180000),
   sessionHealthCheckMs: positiveInteger(process.env.SESSION_HEALTH_CHECK_MS, 300000),
   reconnectDelayMs: positiveInteger(process.env.RECONNECT_DELAY_MS, 15000),
-  eventsSpreadsheetUrl:
-    process.env.EVENTS_SPREADSHEET_URL ||
-    'https://1drv.ms/x/c/4f4433ee4b2fea3a/IQA66i9L7jNEIIBPN2YAAAAAAVpcm1ifyE8ldoGNslNcYzc?download=1',
-  pricingSpreadsheetUrl:
-    process.env.PRICING_SPREADSHEET_URL ||
-    'https://1drv.ms/x/c/ed9f8646361c61a8/IQDkkm-sBM6cRoU-3MxkA7B0AUoyOvWAN0wOYObppEYaEdc?download=1',
+  eventsSpreadsheetUrl: process.env.EVENTS_SPREADSHEET_URL || defaultEventsSpreadsheetUrl,
+  pricingSpreadsheetUrl: process.env.PRICING_SPREADSHEET_URL || process.env.EVENTS_SPREADSHEET_URL || defaultEventsSpreadsheetUrl,
   courtSpreadsheetUrl:
     process.env.COURT_SPREADSHEET_URL ||
     'https://1drv.ms/x/c/4f4433ee4b2fea3a/IQA66i9L7jNEIIBPO2YAAAAAAQMrQKACDoF8cSnU9Pimxos?download=1',

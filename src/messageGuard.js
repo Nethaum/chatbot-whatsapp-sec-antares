@@ -11,6 +11,7 @@ const processedMessageTtlMs = 24 * 60 * 60 * 1000;
 const outgoingReplyTtlMs = 15 * 1000;
 const processedCleanupIntervalMs = 60 * 60 * 1000;
 const outgoingCleanupIntervalMs = 60 * 1000;
+const semanticMessageWindowSeconds = 10;
 
 let lockFd;
 let lastProcessedCleanupAt = 0;
@@ -128,9 +129,10 @@ function getMessageId(message) {
 
 function getSemanticMessageKey(message) {
   const body = String(message.body || '').replace(/\s+/g, ' ').trim().toLowerCase();
-  const timestamp = message.timestamp || Math.floor(Date.now() / 10_000);
+  const timestamp = Number(message.timestamp) || Math.floor(Date.now() / 1000);
+  const timeBucket = Math.floor(timestamp / semanticMessageWindowSeconds);
 
-  return `${message.from}:${timestamp}:${body}`;
+  return `${message.from}:${timeBucket}:${body}`;
 }
 
 function claimProcessedMessageKey(type, value, message) {

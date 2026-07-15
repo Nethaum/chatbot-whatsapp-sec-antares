@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import { shouldProcessMessage, shouldSendReply } from '../src/messageGuard.js';
 
-const timestamp = Math.floor(Date.now() / 1000);
+const timestamp = 1_800_000_000;
 const runId = crypto.randomUUID();
 const baseMessage = {
   from: `test-${runId}@c.us`,
@@ -24,6 +24,24 @@ assert.equal(
     id: { _serialized: `test-${runId}-b` }
   }),
   false
+);
+
+assert.equal(
+  shouldProcessMessage({
+    ...baseMessage,
+    timestamp: timestamp + 4,
+    id: { _serialized: `test-${runId}-same-window` }
+  }),
+  false
+);
+
+assert.equal(
+  shouldProcessMessage({
+    ...baseMessage,
+    timestamp: timestamp + 20,
+    id: { _serialized: `test-${runId}-later` }
+  }),
+  true
 );
 
 const chatId = `test-chat-${runId}@c.us`;

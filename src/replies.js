@@ -3,6 +3,12 @@ import { buildEventsReply, checkReservationAvailability } from './eventAgenda.js
 import { findMemberByPhone } from './memberRegistry.js';
 import { buildReservationPricingText } from './reservationPricing.js';
 import { checkCourtAvailability } from './courtAgenda.js';
+import {
+  findContactByArea,
+  formatContactLine,
+  formatContactRedirect,
+  sortedContacts
+} from './contactFormatter.js';
 import { formatDate, weekdayName } from './dateUtils.js';
 import {
   acknowledgementTriggers,
@@ -424,6 +430,12 @@ async function replyForIntent(intentKey, club, chatId) {
       return withNavigationShortcuts(address(club));
     case 'hours':
       return withNavigationShortcuts(hours(club));
+    case 'restaurant':
+      return withNavigationShortcuts(restaurant(club));
+    case 'contacts':
+      return withNavigationShortcuts(contacts(club));
+    case 'social':
+      return withNavigationShortcuts(social(club));
     case 'membership':
       membershipStates.set(chatId, {
         step: 'awaiting_membership_details',
@@ -497,7 +509,7 @@ function isBlankOrEmojiOnly(text) {
 }
 
 function menu(club, member = null) {
-  return [
+  const lines = [
     `👋 ${formatGreetingLine(club, member)}`,
     '',
     '❓ Escolha uma opção ou digite uma palavra‑chave:',
@@ -507,11 +519,19 @@ function menu(club, member = null) {
     '3️⃣ Mensalidade 💳',
     '4️⃣ Associação 🧾',
     '5️⃣ Feedback 💬',
+    '6️⃣ Contatos 📞',
     '',
     '0️⃣ Menu Principal 🏠',
-    '',
-    '💡 Dica: envie apenas o número da opção para ir direto ao que deseja.'
-  ].join('\n');
+    ''
+  ];
+
+  if (club.serviceNotice) {
+    lines.push(club.serviceNotice, '');
+  }
+
+  lines.push('💡 Dica: envie apenas o número da opção para ir direto ao que deseja.');
+
+  return lines.join('\n');
 }
 
 function formatGreetingLine(club, member) {
@@ -1026,6 +1046,7 @@ function confirmMembershipDetails(details) {
     `• 🧾 Plano: ${details.plan}`,
     '',
     '❓ Deseja enviar a solicitação com esses dados?',
+    '',
     '✅ Responda *sim* para confirmar.',
     '📝 Envie uma informação corrigida, se necessário.',
     '❌ Responda *não* para voltar ao menu anterior.'
@@ -1204,7 +1225,7 @@ function courtAvailability(choice, availability) {
   const lines = [
     `${choice.emoji} ${choice.name}`,
     '',
-    `🔎 Data identificada: ${formatDateWithWeekday(availability.requestedDate)}`
+    `🔎 Data identificada: ${formatBoldDateWithWeekday(availability.requestedDate)}`
   ];
 
   if (availability.displayMode === 'unavailable_only') {
@@ -1252,6 +1273,10 @@ function formatDateWithWeekday(date) {
   return `${formatDate(date)} (${formatWeekday(weekdayFromDate(date))})`;
 }
 
+function formatBoldDateWithWeekday(date) {
+  return `*${formatDateWithWeekday(date)}*`;
+}
+
 function weekdayFromDate(date) {
   return weekdayName(date);
 }
@@ -1259,6 +1284,7 @@ function weekdayFromDate(date) {
 function confirmDateInstructions() {
   return [
     '❓ Deseja seguir com essa data?',
+    '',
     '✅ Responda *sim* para continuar.',
     '📅 Informe outra data para consultar.',
     '❌ Responda *não* para voltar ao menu anterior.'
@@ -1291,7 +1317,7 @@ function confirmReservationDate(choice, selectedDate) {
   return [
     `${choice.emoji} ${choice.name}`,
     '',
-    `🔎 Data identificada: ${formatDateWithWeekday(selectedDate)}`,
+    `🔎 Data identificada: ${formatBoldDateWithWeekday(selectedDate)}`,
     '',
     ...confirmDateInstructions()
   ].join('\n');
@@ -1317,7 +1343,7 @@ function reservationDetailsPrompt(choice, selectedDate, details, requiredFields)
   const lines = [
     `${choice.emoji} ${choice.name}`,
     '',
-    `✅ Data confirmada: ${formatDateWithWeekday(selectedDate)}`
+    `✅ Data confirmada: ${formatBoldDateWithWeekday(selectedDate)}`
   ];
 
   if (knownDetails.length) {
@@ -1401,35 +1427,6 @@ function buildReservationContactMessage(choice, details, selectedDate) {
   ]
     .filter(Boolean)
     .join(' ');
-}
-
-function formatContactRedirect(contact, message) {
-  const link = buildWhatsAppLink(contact.phone, message);
-  const lines = [
-    `📲 Atendimento responsável: ${contact.area}`,
-    `WhatsApp: ${contact.phone}`
-  ];
-
-  if (link) {
-    lines.push(`Abrir mensagem pronta: ${link}`);
-  }
-
-  return lines;
-}
-
-function buildWhatsAppLink(phone, message) {
-  const digits = String(phone || '').replace(/\D/g, '');
-
-  if (!digits) {
-    return '';
-  }
-
-  const encodedMessage = encodeURIComponent(message || '');
-  return encodedMessage ? `https://wa.me/${digits}?text=${encodedMessage}` : `https://wa.me/${digits}`;
-}
-
-function findContactByArea(club, area) {
-  return club.contacts?.find((contact) => normalizeText(contact.area) === normalizeText(area));
 }
 
 function reservationRequestPaused(choice) {
@@ -1580,7 +1577,7 @@ function formatKnownReservationDetails(details = {}, selectedDate) {
   const lines = [];
 
   if (selectedDate) {
-    lines.push(`• 🗓️ Data: ${formatDateWithWeekday(selectedDate)}`);
+    lines.push(`• 🗓️ Data: ${formatBoldDateWithWeekday(selectedDate)}`);
   }
 
   if (details.name) {
@@ -1615,7 +1612,7 @@ function unavailableReservationDate(choice, availability) {
   const lines = [
     `${choice.emoji} ${choice.name}`,
     '',
-    `❌ A data ${formatDateWithWeekday(availability.requestedDate)} não está disponível para este ambiente.`
+    `❌ A data ${formatBoldDateWithWeekday(availability.requestedDate)} não está disponível para este ambiente.`
   ];
 
   if (suggestions.length) {
@@ -1629,7 +1626,7 @@ function unavailableReservationDate(choice, availability) {
 
 function formatReservationSuggestion(suggestion) {
   const emoji = suggestion.direction === 'previous' ? '⬅️' : '➡️';
-  return `${emoji} ${formatDateWithWeekday(suggestion.date)}`;
+  return `${emoji} ${formatBoldDateWithWeekday(suggestion.date)}`;
 }
 
 function clearReservationState(chatId) {
@@ -1732,7 +1729,7 @@ function dues(club) {
 
 function formatDuesValue(item) {
   const emoji = item.emoji ? `${item.emoji} ` : '';
-  return `• ${emoji}${item.name}: ${item.amount}`;
+  return `• ${emoji}${item.name}: ${boldMoneyValues(item.amount)}`;
 }
 
 function buildDuesContactMessage() {
@@ -1761,6 +1758,47 @@ function hours(club) {
   return ['🕒 Horários:', ...club.hours.map((item) => `- ${item}`)].join('\n');
 }
 
+function restaurant(club) {
+  const contact = findContactByArea(club, 'Ecônomo') || findContactByArea(club, 'Restaurante');
+
+  if (!contact) {
+    return '🍽️ Ecônomo\n\n📞 Consulte a secretaria para confirmar o contato.';
+  }
+
+  return [
+    '🍽️ Ecônomo',
+    '',
+    '📞 Contato:',
+    ...formatContactRedirect(contact)
+  ].join('\n');
+}
+
+function contacts(club) {
+  if (!club.contacts?.length) {
+    return '📞 Contatos\n\n💬 Consulte a secretaria para confirmar os contatos disponíveis.';
+  }
+
+  return [
+    '📞 Contatos da SEC Antares',
+    '',
+    ...sortedContacts(club.contacts).map(formatContactLine),
+    '',
+    '💡 Para reservas, mensalidade ou associação, você também pode usar o menu correspondente.'
+  ].join('\n');
+}
+
+function social(club) {
+  if (!club.social?.instagramUrl) {
+    return '📲 Instagram\n\n💬 Consulte a secretaria para confirmar o perfil oficial.';
+  }
+
+  return [
+    '📲 Instagram oficial da SEC Antares',
+    '',
+    club.social.instagramUrl
+  ].join('\n');
+}
+
 function membership(club) {
   const membershipInfo = club.membership || {};
   const lines = ['🧾 Associação'];
@@ -1772,7 +1810,7 @@ function membership(club) {
       lines.push(
         '',
         `${plan.emoji || '•'} ${plan.name}`,
-        `💰 ${plan.price}`,
+        `💰 ${boldMoneyValues(plan.price)}`,
         `ℹ️ ${plan.description}`
       );
 
@@ -1866,7 +1904,7 @@ function rules(club) {
 
 function handoff(club) {
   const contacts = club.contacts?.length
-    ? ['', '📞 Contatos:', ...club.contacts.map((contact) => `- ${contact.area}: ${contact.name} ${contact.phone}`)]
+    ? ['', '📞 Contatos:', ...sortedContacts(club.contacts).map(formatContactLine)]
     : [];
 
   return [withLeadingEmoji(club.handoff || 'Vou chamar alguém da equipe para continuar o atendimento.', '💬'), ...contacts].join('\n');
@@ -1880,4 +1918,8 @@ function withLeadingEmoji(text, emoji) {
   }
 
   return `${emoji} ${value}`;
+}
+
+function boldMoneyValues(value) {
+  return String(value || '').replace(/R\$\s*\d{1,3}(?:\.\d{3})*,\d{2}(?:\/mês)?/g, (match) => `*${match}*`);
 }

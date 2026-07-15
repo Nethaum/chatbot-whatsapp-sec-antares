@@ -264,18 +264,32 @@ function formatPricingRow(row) {
 }
 
 function formatMoney(value) {
+  const money = moneyText(value);
+
+  return money ? bold(money) : '';
+}
+
+function moneyText(value) {
   if (value === null || value === undefined || value === '') {
     return '';
   }
 
   if (typeof value === 'number') {
-    return new Intl.NumberFormat('pt-BR', {
+    return normalizeCurrencySpacing(new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL'
-    }).format(value);
+    }).format(value));
   }
 
-  return cellValueToText(value);
+  return normalizeCurrencySpacing(cellValueToText(value));
+}
+
+function bold(value) {
+  return `*${value}*`;
+}
+
+function normalizeCurrencySpacing(value) {
+  return String(value || '').replace(/\u00a0/g, ' ');
 }
 
 function isAnotherEnvironmentHeader(rowText) {

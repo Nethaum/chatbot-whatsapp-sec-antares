@@ -10,16 +10,29 @@ import { compactWhitespace } from './text.js';
 
 const { Client, LocalAuth, MessageMedia } = pkg;
 const club = loadClub();
+const maxStartupUnreadMessagesPerChat = 10;
+const readyRecoveryDelayMs = 8000;
+const unreadScanInitialDelayMs = 3000;
+const unreadScanRetryDelayMs = 5000;
+const maxUnreadScanAttempts = 3;
+const contactLookupTimeoutMs = 1200;
 let startupErrorHandled = false;
 let client;
 let reconnectTimer;
 let healthCheckTimer;
 let readyTimeoutTimer;
+let readyRecoveryTimer;
 let starting = false;
+let ready = false;
 
 const transientBrowserErrorFragments = [
   'detached frame',
+  'executioncontext',
   'execution context was destroyed',
+  'isolatedworld.evaluate',
+  'cdpframe.evaluate',
+  'client.getchatbyid',
+  'client.sendmessage',
   'cannot find context',
   'target closed',
   'session closed',
@@ -86,6 +99,7 @@ function createClient() {
   nextClient.on('authenticated', () => {
     console.log('Sessao autenticada.');
     console.log('Carregando WhatsApp Web. Aguarde o aviso de pronto antes de testar mensagens.');
+    scheduleReadyRecovery();
   });
 
   nextClient.on('loading_screen', (percent, message) => {
@@ -98,11 +112,14 @@ function createClient() {
 
   nextClient.on('ready', () => {
     starting = false;
+    ready = true;
     startupErrorHandled = false;
     stopReadyTimeout();
+    stopReadyRecovery();
     console.log(`${settings.botName} pronto para atender ${club.name}.`);
     console.log('Bot em execucao. Deixe esta janela aberta para continuar atendendo.');
     startHealthCheck();
+    scheduleUnreadScan();
   });
 
   nextClient.on('auth_failure', (message) => {
@@ -111,7 +128,9 @@ function createClient() {
 
   nextClient.on('disconnected', (reason) => {
     starting = false;
+    ready = false;
     stopReadyTimeout();
+    stopReadyRecovery();
     stopHealthCheck();
     console.log('Cliente desconectado:', reason);
 
@@ -134,9 +153,9 @@ async function handleMessage(message) {
       return;
     }
 
-    const chat = await message.getChat();
-    const isGroup = chat.isGroup;
     const body = compactWhitespace(message.body);
+    const context = await resolveIncomingMessageContext(message);
+    const { chat, isGroup, chatId, userPhones } = context;
 
     if (isGroup && !shouldAnswerGroupMessage(body)) {
       return;
@@ -148,47 +167,19 @@ async function handleMessage(message) {
     }
 
     const cleanBody = isGroup ? removeGroupPrefix(body) : body;
-    const chatId = chat.id?._serialized || message.from;
-    const userPhones = await resolveSenderPhoneCandidates(message, chat, isGroup);
-    const replyContext = {
+    await answerIncomingMessage({
+      body: cleanBody,
+      chat,
       chatId,
-      userPhone: userPhones[0] || '',
-      userPhones
-    };
-    const preflightReply = await buildPreflightReply(cleanBody, replyContext);
-
-    if (preflightReply) {
-      await sendReply(chat, preflightReply);
-      return;
-    }
-
-    const waitNotice = buildWaitNotice(cleanBody, { chatId });
-
-    if (waitNotice) {
-      await sendReply(chat, waitNotice);
-    }
-
-    const reply = await buildReply(cleanBody, club, {
-      ...replyContext,
-      memberPreflightDone: true
-    });
-
-    if (!reply) {
-      return;
-    }
-
-    await sendReply(chat, reply);
-
-    logConversation({
       from: message.from,
       isGroup,
-      body,
-      reply: formatReplyForLog(reply)
+      originalBody: body,
+      userPhones
     });
   } catch (error) {
     if (isTransientBrowserError(error)) {
-      console.error('WhatsApp Web recarregou durante o envio. O bot vai tentar reconectar automaticamente.');
-      scheduleReconnect('erro transitório do WhatsApp Web durante resposta');
+      console.warn('WhatsApp Web falhou ao ler uma mensagem. O bot manteve a sessao ativa para evitar atraso.');
+      console.warn(formatErrorForLog(error));
       return;
     }
 
@@ -196,21 +187,288 @@ async function handleMessage(message) {
   }
 }
 
+async function resolveIncomingMessageContext(message) {
+  const fallbackChatId = getMessageChatId(message);
+
+  try {
+    const chat = await message.getChat();
+    const isGroup = Boolean(chat.isGroup);
+    const chatId = chat.id?._serialized || fallbackChatId;
+    const userPhones = await resolveSenderPhoneCandidates(message, chat, isGroup);
+
+    return {
+      chat,
+      isGroup,
+      chatId,
+      userPhones
+    };
+  } catch (error) {
+    if (!isTransientBrowserError(error)) {
+      throw error;
+    }
+
+    const isGroup = isGroupChatId(fallbackChatId);
+
+    if (isGroup) {
+      throw error;
+    }
+
+    console.warn('Chat completo indisponivel. Usando envio direto para continuar o atendimento.');
+
+    return {
+      chat: createChatAdapter(fallbackChatId, false),
+      isGroup: false,
+      chatId: fallbackChatId,
+      userPhones: await resolveFallbackSenderPhoneCandidates(message, fallbackChatId)
+    };
+  }
+}
+
+function getMessageChatId(message) {
+  return (
+    message.from ||
+    message.id?.remote ||
+    message.id?._serialized?.split('_').at(-1) ||
+    ''
+  );
+}
+
+function isGroupChatId(chatId) {
+  return /@g\.us$/i.test(String(chatId || ''));
+}
+
+async function answerIncomingMessage({ body, chat, chatId, from, isGroup, originalBody, userPhones }) {
+  const replyContext = {
+    chatId,
+    userPhone: userPhones[0] || '',
+    userPhones
+  };
+  const preflightReply = await buildPreflightReply(body, replyContext);
+
+  if (preflightReply) {
+    await sendReply(chat, preflightReply);
+    return;
+  }
+
+  const waitNotice = buildWaitNotice(body, { chatId });
+
+  if (waitNotice) {
+    await sendReply(chat, waitNotice);
+  }
+
+  const reply = await buildReply(body, club, {
+    ...replyContext,
+    memberPreflightDone: true
+  });
+
+  if (!reply) {
+    return;
+  }
+
+  await sendReply(chat, reply);
+
+  logConversation({
+    from,
+    isGroup,
+    body: originalBody,
+    reply: formatReplyForLog(reply)
+  });
+}
+
+async function processUnreadChats() {
+  const unreadMessages = await readUnreadMessagesFromPage();
+
+  if (!unreadMessages.length) {
+    return;
+  }
+
+  console.log(`Verificando ${unreadMessages.length} mensagem(ns) nao lida(s).`);
+
+  for (const message of unreadMessages) {
+    await handleRecoveredUnreadMessage(message);
+  }
+}
+
+async function readUnreadMessagesFromPage() {
+  return client.pupPage.evaluate((messageLimit) => {
+    const chatCollection = window.require?.('WAWebCollections')?.Chat;
+    const chats = chatCollection?.getModelsArray?.() || [];
+
+    return chats
+      .filter((chat) => Number(chat.unreadCount) > 0)
+      .flatMap((chat) => serializeUnreadMessages(chat, messageLimit));
+
+    function serializeUnreadMessages(chat, messageLimit) {
+      const unreadCount = Number(chat.unreadCount) || 0;
+      const limit = Math.max(1, Math.min(unreadCount, messageLimit));
+      const messages = chat.msgs?.getModelsArray?.() || chat.msgs?._models || [];
+      const incomingMessages = messages
+        .filter((message) => !isFromCurrentUser(message) && message.from?._serialized !== 'status@broadcast')
+        .sort((left, right) => Number(left.t || left.timestamp || 0) - Number(right.t || right.timestamp || 0));
+
+      return incomingMessages.slice(-limit).map((message) => ({
+        id: message.id?._serialized || `${chat.id?._serialized}:${message.t || message.timestamp}:${message.body || ''}`,
+        chatId: chat.id?._serialized,
+        chatTitle: chat.formattedTitle || chat.name || '',
+        from: message.from?._serialized || chat.id?._serialized,
+        body: message.body || '',
+        timestamp: Number(message.t || message.timestamp || Date.now() / 1000),
+        type: message.type || 'chat'
+      }));
+    }
+
+    function isFromCurrentUser(message) {
+      return Boolean(message.id?.fromMe ?? message.fromMe);
+    }
+  }, maxStartupUnreadMessagesPerChat);
+}
+
+async function handleRecoveredUnreadMessage(message) {
+  if (!message.chatId || message.from === 'status@broadcast') {
+    return;
+  }
+
+  const body = compactWhitespace(message.body);
+  const isGroup = /@g\.us$/i.test(message.chatId);
+
+  if (isGroup && !shouldAnswerGroupMessage(body)) {
+    return;
+  }
+
+  const messageForGuard = {
+    id: { _serialized: message.id },
+    from: message.from || message.chatId,
+    timestamp: message.timestamp,
+    body
+  };
+
+  if (!shouldProcessMessage(messageForGuard)) {
+    console.log('Mensagem nao lida duplicada ignorada.');
+    return;
+  }
+
+  const cleanBody = isGroup ? removeGroupPrefix(body) : body;
+  const chat = createChatAdapter(message.chatId, isGroup);
+  const userPhones = uniqueValues([message.from, message.chatId, message.chatTitle].flatMap(extractPhoneCandidates));
+
+  await answerIncomingMessage({
+    body: cleanBody,
+    chat,
+    chatId: message.chatId,
+    from: message.from || message.chatId,
+    isGroup,
+    originalBody: body,
+    userPhones
+  });
+
+  await markChatSeen(message.chatId);
+}
+
+function createChatAdapter(chatId, isGroup) {
+  return {
+    id: {
+      _serialized: chatId,
+      user: chatId.replace(/@.+$/, '')
+    },
+    isGroup,
+    sendMessage(content, options) {
+      return client.sendMessage(chatId, content, options);
+    }
+  };
+}
+
+async function markChatSeen(chatId) {
+  try {
+    await client.sendSeen(chatId);
+  } catch (error) {
+    console.warn(`Não foi possível marcar a conversa como lida: ${error?.message || error}`);
+  }
+}
+
+function scheduleUnreadScan(attempt = 1, delayMs = unreadScanInitialDelayMs) {
+  setTimeout(() => {
+    processUnreadChats().catch((error) => handleUnreadProcessingError(error, attempt));
+  }, delayMs);
+}
+
+function handleUnreadProcessingError(error, attempt) {
+  const errorDetails = formatErrorForLog(error);
+
+  if (isTransientBrowserError(error) && attempt < maxUnreadScanAttempts) {
+    console.warn(
+      `WhatsApp Web ainda esta estabilizando. Nova tentativa de verificar mensagens nao lidas (${attempt + 1}/${maxUnreadScanAttempts}).`
+    );
+    console.warn(errorDetails);
+    scheduleUnreadScan(attempt + 1, unreadScanRetryDelayMs);
+    return;
+  }
+
+  console.error('Falha ao verificar mensagens nao lidas:', errorDetails);
+}
+
 async function resolveSenderPhoneCandidates(message, chat, isGroup) {
+  const chatId = chat.id?._serialized || '';
   const rawCandidates = [
     isGroup ? message.author : message.from,
-    !isGroup ? chat.id?.user : null,
-    !isGroup ? chat.id?._serialized : null
+    !isGroup && !isLidChatId(chatId) ? chat.id?.user : null,
+    !isGroup ? chatId : null,
+    !isGroup ? await readChatTitle(chatId) : null
   ];
 
   try {
-    const contact = await message.getContact();
-    rawCandidates.push(contact?.number, contact?.id?.user, contact?.id?._serialized);
+    const contact = await withTimeout(message.getContact(), contactLookupTimeoutMs);
+    const contactId = contact?.id?._serialized || '';
+    rawCandidates.push(
+      contact?.number,
+      !isLidChatId(contactId) ? contact?.id?.user : null,
+      contactId
+    );
   } catch (error) {
     console.warn(`Não foi possível ler detalhes do contato para validar o cadastro: ${error.message}`);
   }
 
   return uniqueValues(rawCandidates.flatMap(extractPhoneCandidates));
+}
+
+async function resolveFallbackSenderPhoneCandidates(message, chatId) {
+  const rawCandidates = [
+    message.from,
+    message.author,
+    message.id?.remote,
+    message.id?._serialized,
+    chatId,
+    await readChatTitle(chatId)
+  ];
+
+  return uniqueValues(rawCandidates.flatMap(extractPhoneCandidates));
+}
+
+async function readChatTitle(chatId) {
+  if (!chatId || !client?.pupPage) {
+    return '';
+  }
+
+  try {
+    return await client.pupPage.evaluate((id) => {
+      const chat = window.require?.('WAWebCollections')?.Chat?.get?.(id);
+      return chat?.formattedTitle || chat?.name || '';
+    }, chatId);
+  } catch {
+    return '';
+  }
+}
+
+function isLidChatId(chatId) {
+  return /@lid\b/i.test(String(chatId || ''));
+}
+
+function withTimeout(promise, timeoutMs) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(`tempo limite de ${timeoutMs}ms excedido`)), timeoutMs);
+    })
+  ]);
 }
 
 function extractPhoneCandidates(value) {
@@ -284,15 +542,17 @@ async function sendMessageSafely(chat, content, options, label) {
 }
 
 function isTransientBrowserError(error) {
-  const message = String(error?.message || error).toLowerCase();
+  const message = [
+    error?.name,
+    error?.message,
+    error?.stack,
+    String(error || '')
+  ]
+    .filter(Boolean)
+    .join('\n')
+    .toLowerCase();
 
   return transientBrowserErrorFragments.some((fragment) => message.includes(fragment));
-}
-
-function delay(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
 }
 
 function resolveMediaPath(mediaPath) {
@@ -313,9 +573,62 @@ async function startClient() {
     return;
   }
 
+  ready = false;
   starting = true;
   startReadyTimeout();
   await client.initialize();
+}
+
+function scheduleReadyRecovery() {
+  stopReadyRecovery();
+
+  if (ready) {
+    return;
+  }
+
+  readyRecoveryTimer = setTimeout(() => {
+    readyRecoveryTimer = undefined;
+    recoverReadyFromSyncedPage().catch(handleReadyRecoveryError);
+  }, readyRecoveryDelayMs);
+}
+
+async function recoverReadyFromSyncedPage() {
+  if (ready || !starting || !client?.pupPage) {
+    return;
+  }
+
+  const recovered = await client.pupPage.evaluate(async () => {
+    const socket = window.require?.('WAWebSocketModel')?.Socket;
+    const canRecover =
+      socket?.state === 'CONNECTED' &&
+      socket?.hasSynced &&
+      typeof window.onAppStateHasSyncedEvent === 'function';
+
+    if (!canRecover) {
+      return false;
+    }
+
+    delete window.WWebJS;
+    await window.onAppStateHasSyncedEvent();
+    return true;
+  });
+
+  if (recovered) {
+    console.log('Sessao conectada. Finalizando preparacao do WhatsApp Web.');
+    return;
+  }
+
+  scheduleReadyRecovery();
+}
+
+function handleReadyRecoveryError(error) {
+  if (isTransientBrowserError(error)) {
+    console.warn('WhatsApp Web ainda nao estabilizou para concluir a preparacao.');
+    scheduleReadyRecovery();
+    return;
+  }
+
+  console.error('Falha ao concluir preparacao do WhatsApp Web:', formatErrorForLog(error));
 }
 
 function startReadyTimeout() {
@@ -376,17 +689,26 @@ function stopReadyTimeout() {
   }
 }
 
+function stopReadyRecovery() {
+  if (readyRecoveryTimer) {
+    clearTimeout(readyRecoveryTimer);
+    readyRecoveryTimer = undefined;
+  }
+}
+
 function scheduleReconnect(reason) {
   if (reconnectTimer || starting) {
     return;
   }
 
+  ready = false;
   console.log(`Tentando reconectar em ${Math.round(settings.reconnectDelayMs / 1000)} segundos (${reason}).`);
 
   reconnectTimer = setTimeout(async () => {
     reconnectTimer = undefined;
     stopHealthCheck();
     stopReadyTimeout();
+    stopReadyRecovery();
 
     try {
       await client.destroy();
@@ -435,4 +757,8 @@ async function handleStartupError(error) {
 
 function isAuthTimeout(error) {
   return String(error?.message || error).toLowerCase().includes('auth timeout');
+}
+
+function formatErrorForLog(error) {
+  return error?.stack || error?.message || String(error);
 }

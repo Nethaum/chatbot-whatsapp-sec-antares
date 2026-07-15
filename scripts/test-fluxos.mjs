@@ -26,15 +26,48 @@ const mainMenu = await ask('oi', 'test-main-menu');
 assert.match(mainMenu, /Bem-vindo\(a\)/);
 assert.match(mainMenu, /Reservas/);
 assert.match(mainMenu, /Feedback/);
+assert.match(mainMenu, /Contatos/);
+assert.match(mainMenu, /fase de aprimoramento/);
 
 const memberMenu = await askAsMember('oi', 'test-member-menu');
-assert.match(memberMenu, /Boa (dia|tarde|noite), Maria!/);
+assert.match(memberMenu, /(Bom dia|Boa tarde|Boa noite), Maria!/);
 assert.doesNotMatch(memberMenu, /Maria da Silva/);
 
 const duesMenu = await ask('3', 'test-dues');
 assert.match(duesMenu, /Tesouraria/);
 assert.match(duesMenu, /\+55 47 99767-0771/);
 assert.match(duesMenu, /https:\/\/wa\.me\/5547997670771/);
+assert.match(duesMenu, /\*R\$ 100,00\*/);
+assert.match(duesMenu, /\*R\$ 129,00\*/);
+
+const handoffMenu = await ask('atendente', 'test-handoff');
+assert.match(handoffMenu, /Secretaria/);
+assert.match(handoffMenu, /\+55 47 9702-2875/);
+assert.match(handoffMenu, /Ecônomo/);
+
+const addressMenu = await ask('endereço', 'test-address');
+assert.match(addressMenu, /Rua Giácomo Furlani, 66/);
+assert.match(addressMenu, /Rodeio/);
+
+const contactsMenu = await ask('contatos', 'test-contacts');
+assert.match(contactsMenu, /Contatos da SEC Antares/);
+assert.match(contactsMenu, /Tesouraria/);
+assert.match(contactsMenu, /\+55 47 99767-0771/);
+assert.match(contactsMenu, /🍽️ Ecônomo: \+55 47 9973-8197/);
+assert.match(contactsMenu, /🍽️ Ecônomo[\s\S]+🏐 Esportes[\s\S]+🗂️ Secretaria[\s\S]+🎊 Social[\s\S]+💳 Tesouraria/);
+
+const contactsMenuByNumber = await ask('6', 'test-contacts-number');
+assert.match(contactsMenuByNumber, /Contatos da SEC Antares/);
+assert.match(contactsMenuByNumber, /Ecônomo/);
+
+const instagramMenu = await ask('instagram', 'test-instagram');
+assert.match(instagramMenu, /Instagram oficial/);
+assert.match(instagramMenu, /sociedade_antares/);
+
+const restaurantMenu = await ask('restaurante', 'test-restaurant');
+assert.match(restaurantMenu, /Ecônomo/);
+assert.match(restaurantMenu, /\+55 47 9973-8197/);
+assert.match(restaurantMenu, /https:\/\/wa\.me\/554799738197/);
 
 assert.equal(await ask('enviar', 'test-outside-feedback'), null);
 
@@ -52,6 +85,9 @@ const membershipMenu = await ask('4', 'test-membership');
 assert.match(membershipMenu, /Associação/);
 assert.match(membershipMenu, /material de apresentação/);
 assert.doesNotMatch(membershipMenu, /Identificação|Não localizei/);
+assert.match(membershipMenu, /\*R\$ 2\.500,00\*/);
+assert.match(membershipMenu, /\*R\$ 100,00\/mês\*/);
+assert.match(membershipMenu, /\*R\$ 129,00\/mês\*/);
 
 const unknownPreflight = await buildPreflightReply('4', {
   chatId: 'test-unidentified-membership',
@@ -86,7 +122,11 @@ assert.match(reservationFinished, /Atendimento encerrado/);
 
 await askAsMember('1', 'test-member-reservation');
 await askAsMember('11', 'test-member-reservation');
-await askAsMember('30/12/2026', 'test-member-reservation');
+const dateConfirmation = await askAsMember('30/12/2026', 'test-member-reservation');
+assert.match(dateConfirmation, /Data identificada: \*30\/12\/2026 \(Quarta-feira\)\*/);
+assert.match(dateConfirmation, /Deseja seguir com essa data\?\n\n✅ Responda \*sim\*/);
+assert.match(dateConfirmation, /Informe outra data para consultar/);
+assert.doesNotMatch(dateConfirmation, /\*data\*/);
 const memberReservationPrompt = await askAsMember('sim', 'test-member-reservation');
 assert.match(memberReservationPrompt, /Nome: Maria da Silva/);
 assert.match(memberReservationPrompt, /Horário de início do evento/);

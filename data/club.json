@@ -2,9 +2,10 @@
   "name": "SEC Antares",
   "shortName": "SEC Antares",
   "welcome": "Bem-vindo(a) ao atendimento da SEC Antares.",
+  "serviceNotice": "ℹ️ Este atendimento está em fase de aprimoramento. Algumas informações podem sofrer alterações e dependem de confirmação dos setores responsáveis.",
   "address": {
-    "line": "Rua das Palmeiras, 123 - Centro",
-    "mapsUrl": "https://maps.google.com/?q=Rua+das+Palmeiras+123"
+    "line": "Rua Giácomo Furlani, 66 - Centro, Rodeio - SC",
+    "mapsUrl": "https://maps.google.com/?q=Sociedade+Esportiva+e+Cultural+Antares+Rodeio+SC"
   },
   "social": {
     "instagramUrl": "https://www.instagram.com/sociedade_antares/"
@@ -19,7 +20,7 @@
       {
         "name": "Sócio Patrimonial",
         "emoji": "🏛️",
-        "price": "Entrada de R$ 1.500,00 + R$ 100,00/mês",
+        "price": "Entrada de R$ 2.500,00 + R$ 100,00/mês",
         "description": "Indicado para quem deseja adquirir título e participar como proprietário de parte do clube.",
         "benefits": [
           "50% de desconto na academia",
@@ -36,7 +37,7 @@
           "Desconto em aulas de natação e hidroginástica",
           "Isenção de aluguel na área da churrasqueira",
           "Desconto parcial em aluguéis e taxas dos salões",
-          "Acesso a bolão, parquinho, jogos de mesa e piscina de uso comum"
+          "Acesso a parquinho, jogos de mesa e piscina de uso comum"
         ]
       }
     ],
@@ -102,19 +103,17 @@
       }
     ]
   },
-  "events": [
+  "contacts": [
     {
-      "date": "2026-05-23",
-      "title": "Torneio interno",
-      "details": "Inscrições na secretaria até 20/05."
+      "area": "Secretaria",
+      "name": "Atendimento da secretaria",
+      "phone": "+55 47 9702-2875"
     },
     {
-      "date": "2026-06-06",
-      "title": "Feijoada do clube",
-      "details": "Convites disponíveis na secretaria."
-    }
-  ],
-  "contacts": [
+      "area": "Ecônomo",
+      "name": "Ecônomo",
+      "phone": "+55 47 9973-8197"
+    },
     {
       "area": "Esportes",
       "name": "Agenda de reserva da Quadra de Areia",
@@ -142,5 +141,5 @@
     "Convidados devem ser cadastrados na secretaria.",
     "Animais de estimação devem seguir as regras internas do clube."
   ],
-  "handoff": "Vou pedir para alguém da equipe assumir por aqui.\n📝 Enquanto isso, deixe seu nome e o assunto em uma única mensagem."
+  "handoff": "Vou pedir para alguém da equipe assumir por aqui.\n📝 Enquanto isso, deixe seu nome e o assunto."
 }

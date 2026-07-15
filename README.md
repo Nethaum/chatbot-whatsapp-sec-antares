@@ -16,6 +16,7 @@ O projeto roda no computador do operador, usa planilhas como fonte de dados para
 - Menu de mensalidade com valores, vencimento e contato da tesouraria.
 - Menu de associação com planos, benefícios e envio de materiais.
 - Coleta de feedback com finalização por palavra-chave.
+- Menu de contatos com setores do clube, Ecônomo e redirecionamento por WhatsApp.
 - Identificação silenciosa de sócios por telefone, usando índice local codificado.
 - Proteção contra instâncias duplicadas e respostas repetidas.
 - Reconexão automática em falhas transitórias do WhatsApp Web.
@@ -121,6 +122,8 @@ PRICING_SPREADSHEET_URL=
 COURT_SPREADSHEET_URL=
 ```
 
+Quando `PRICING_SPREADSHEET_URL` fica vazio, o bot procura a aba de preços dentro da própria planilha de eventos. Use essa variável apenas se a tabela de valores estiver em um arquivo separado.
+
 ## Lista de sócios
 
 A identificação de sócios é feita de forma local e silenciosa. O bot não pede identificação ao usuário apenas por não encontrar o número no cadastro.
@@ -199,6 +202,18 @@ Para a quadra de areia, o bot:
 - Em fins de semana, exibe apenas horários indisponíveis quando houver.
 
 Após receber os dados necessários, o bot apresenta o resumo da solicitação e informa o setor responsável.
+
+## Contatos
+
+O menu `6 Contatos` exibe os setores em ordem alfabética:
+
+- Ecônomo
+- Esportes
+- Secretaria
+- Social
+- Tesouraria
+
+As mensagens de reserva e mensalidade também incluem o setor responsável e, quando possível, um link do WhatsApp com mensagem sugerida.
 
 ## Grupos
 

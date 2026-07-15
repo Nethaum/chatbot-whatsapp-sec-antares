@@ -181,6 +181,18 @@ export const intentMatchers = [
     words: ['horario', 'horarios', 'abre', 'fecha', 'funcionamento']
   },
   {
+    key: 'restaurant',
+    words: ['economo', 'ecônomo', 'restaurante', 'lanchonete', 'almoco', 'almoço', 'comida', 'cardapio', 'cardápio']
+  },
+  {
+    key: 'contacts',
+    words: ['contato', 'contatos', 'telefone', 'telefones', 'whatsapp', 'numero', 'número', 'fones']
+  },
+  {
+    key: 'social',
+    words: ['instagram', 'rede social', 'redes sociais', 'perfil oficial', 'insta']
+  },
+  {
     key: 'membership',
     words: [
       'associacao',
@@ -227,7 +239,8 @@ export const menuNumberMap = {
   2: 'events',
   3: 'dues',
   4: 'membership',
-  5: 'feedback'
+  5: 'feedback',
+  6: 'contacts'
 };
 
 export const parentMenuShortcutLabels = {
@@ -235,7 +248,8 @@ export const parentMenuShortcutLabels = {
   events: '2️⃣ Eventos 🎊',
   dues: '3️⃣ Mensalidade 💳',
   membership: '4️⃣ Associação 🧾',
-  feedback: '5️⃣ Feedback 💬'
+  feedback: '5️⃣ Feedback 💬',
+  contacts: '6️⃣ Contatos 📞'
 };
 
 export const screenParents = {
@@ -244,6 +258,9 @@ export const screenParents = {
   dues: 'main',
   address: 'main',
   hours: 'main',
+  restaurant: 'main',
+  contacts: 'main',
+  social: 'main',
   membership: 'main',
   feedback: 'main',
   rules: 'main',
