@@ -18,6 +18,7 @@ O projeto roda no computador do operador, usa planilhas como fonte de dados para
 - Coleta de feedback com finalização por palavra-chave.
 - Menu de contatos com setores do clube, Ecônomo e redirecionamento por WhatsApp.
 - Identificação silenciosa de sócios por telefone, usando índice local codificado.
+- Bloqueio permanente de respostas em grupos.
 - Proteção contra instâncias duplicadas e respostas repetidas.
 - Reconexão automática em falhas transitórias do WhatsApp Web.
 - Inicialização automática no Windows por tarefa agendada.
@@ -102,8 +103,6 @@ As principais variáveis podem ser ajustadas no `.env`:
 
 ```env
 BOT_NAME=Assistente do Clube
-RESPOND_IN_GROUPS=false
-GROUP_COMMAND_PREFIX=!clube
 LOG_MESSAGES=false
 AUTH_TIMEOUT_MS=120000
 READY_TIMEOUT_MS=180000
@@ -217,18 +216,7 @@ As mensagens de reserva e mensalidade também incluem o setor responsável e, qu
 
 ## Grupos
 
-Por padrão, o bot não responde em grupos. Para habilitar:
-
-```env
-RESPOND_IN_GROUPS=true
-GROUP_COMMAND_PREFIX=!clube
-```
-
-Exemplo de uso em grupo:
-
-```text
-!clube eventos
-```
+O bot foi projetado para atendimento individual. Mensagens recebidas em grupos são sempre ignoradas, inclusive quando há mensagens não lidas no momento em que o bot inicia.
 
 ## Logs e privacidade
 

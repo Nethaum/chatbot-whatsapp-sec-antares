@@ -13,8 +13,6 @@ const defaultEventsSpreadsheetUrl =
 
 export const settings = {
   botName: process.env.BOT_NAME || 'Assistente do Clube',
-  respondInGroups: process.env.RESPOND_IN_GROUPS === 'true',
-  groupCommandPrefix: process.env.GROUP_COMMAND_PREFIX || '!clube',
   logMessages: process.env.LOG_MESSAGES === 'true',
   authTimeoutMs: positiveInteger(process.env.AUTH_TIMEOUT_MS, 120000),
   readyTimeoutMs: positiveInteger(process.env.READY_TIMEOUT_MS, 180000),

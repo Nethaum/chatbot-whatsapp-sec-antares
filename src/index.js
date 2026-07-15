@@ -7,6 +7,7 @@ import { logConversation } from './logger.js';
 import { acquireInstanceLock, shouldProcessMessage, shouldSendReply } from './messageGuard.js';
 import { buildPreflightReply, buildReply, buildWaitNotice } from './replies.js';
 import { compactWhitespace } from './text.js';
+import { isGroupChat, isGroupChatId, isGroupMessage } from './groupPolicy.js';
 
 const { Client, LocalAuth, MessageMedia } = pkg;
 const club = loadClub();
@@ -59,24 +60,6 @@ try {
 
 client = createClient();
 startClient().catch(handleStartupError);
-
-function shouldAnswerGroupMessage(body) {
-  if (!settings.respondInGroups) {
-    return false;
-  }
-
-  return body.toLowerCase().startsWith(settings.groupCommandPrefix.toLowerCase());
-}
-
-function removeGroupPrefix(body) {
-  const prefix = settings.groupCommandPrefix;
-
-  if (body.toLowerCase().startsWith(prefix.toLowerCase())) {
-    return body.slice(prefix.length).trim();
-  }
-
-  return body;
-}
 
 function createClient() {
   const nextClient = new Client({
@@ -153,11 +136,17 @@ async function handleMessage(message) {
       return;
     }
 
+    if (isGroupMessage(message)) {
+      console.log('Mensagem de grupo ignorada.');
+      return;
+    }
+
     const body = compactWhitespace(message.body);
     const context = await resolveIncomingMessageContext(message);
     const { chat, isGroup, chatId, userPhones } = context;
 
-    if (isGroup && !shouldAnswerGroupMessage(body)) {
+    if (isGroup) {
+      console.log('Mensagem de grupo ignorada.');
       return;
     }
 
@@ -166,9 +155,8 @@ async function handleMessage(message) {
       return;
     }
 
-    const cleanBody = isGroup ? removeGroupPrefix(body) : body;
     await answerIncomingMessage({
-      body: cleanBody,
+      body,
       chat,
       chatId,
       from: message.from,
@@ -192,9 +180,9 @@ async function resolveIncomingMessageContext(message) {
 
   try {
     const chat = await message.getChat();
-    const isGroup = Boolean(chat.isGroup);
+    const isGroup = isGroupChat(chat);
     const chatId = chat.id?._serialized || fallbackChatId;
-    const userPhones = await resolveSenderPhoneCandidates(message, chat, isGroup);
+    const userPhones = isGroup ? [] : await resolveSenderPhoneCandidates(message, chat, isGroup);
 
     return {
       chat,
@@ -231,10 +219,6 @@ function getMessageChatId(message) {
     message.id?._serialized?.split('_').at(-1) ||
     ''
   );
-}
-
-function isGroupChatId(chatId) {
-  return /@g\.us$/i.test(String(chatId || ''));
 }
 
 async function answerIncomingMessage({ body, chat, chatId, from, isGroup, originalBody, userPhones }) {
@@ -295,8 +279,12 @@ async function readUnreadMessagesFromPage() {
     const chats = chatCollection?.getModelsArray?.() || [];
 
     return chats
-      .filter((chat) => Number(chat.unreadCount) > 0)
+      .filter((chat) => Number(chat.unreadCount) > 0 && !isGroupChat(chat))
       .flatMap((chat) => serializeUnreadMessages(chat, messageLimit));
+
+    function isGroupChat(chat) {
+      return Boolean(chat.isGroup) || /@g\.us$/i.test(String(chat.id?._serialized || ''));
+    }
 
     function serializeUnreadMessages(chat, messageLimit) {
       const unreadCount = Number(chat.unreadCount) || 0;
@@ -328,13 +316,14 @@ async function handleRecoveredUnreadMessage(message) {
     return;
   }
 
-  const body = compactWhitespace(message.body);
   const isGroup = /@g\.us$/i.test(message.chatId);
 
-  if (isGroup && !shouldAnswerGroupMessage(body)) {
+  if (isGroup || isGroupChatId(message.from)) {
+    console.log('Mensagem nao lida de grupo ignorada.');
     return;
   }
 
+  const body = compactWhitespace(message.body);
   const messageForGuard = {
     id: { _serialized: message.id },
     from: message.from || message.chatId,
@@ -347,12 +336,11 @@ async function handleRecoveredUnreadMessage(message) {
     return;
   }
 
-  const cleanBody = isGroup ? removeGroupPrefix(body) : body;
   const chat = createChatAdapter(message.chatId, isGroup);
   const userPhones = uniqueValues([message.from, message.chatId, message.chatTitle].flatMap(extractPhoneCandidates));
 
   await answerIncomingMessage({
-    body: cleanBody,
+    body,
     chat,
     chatId: message.chatId,
     from: message.from || message.chatId,
