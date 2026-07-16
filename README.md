@@ -12,11 +12,12 @@ O projeto roda no computador do operador, usa planilhas como fonte de dados para
 - Fluxo de reservas para salões, churrasqueira e quadra de areia.
 - Consulta de disponibilidade de datas e sugestões alternativas.
 - Consulta de horários da quadra de areia conforme regras da agenda.
-- Mensagens prontas para encaminhamento ao setor responsável.
+- Encaminhamento automático das solicitações de reserva ao setor responsável.
 - Menu de mensalidade com valores, vencimento e contato da tesouraria.
 - Menu de associação com planos, benefícios e envio de materiais.
 - Coleta de feedback com finalização por palavra-chave.
 - Menu de contatos com setores do clube, Ecônomo e redirecionamento por WhatsApp.
+- Proteção para que contatos internos do clube não recebam atendimento automático.
 - Identificação silenciosa de sócios por telefone, usando índice local codificado.
 - Bloqueio permanente de respostas em grupos.
 - Proteção contra instâncias duplicadas e respostas repetidas.
@@ -200,7 +201,12 @@ Para a quadra de areia, o bot:
 - Exibe horários disponíveis em dias úteis.
 - Em fins de semana, exibe apenas horários indisponíveis quando houver.
 
-Após receber os dados necessários, o bot apresenta o resumo da solicitação e informa o setor responsável.
+Após receber os dados necessários, o bot apresenta o resumo ao usuário e encaminha automaticamente a solicitação ao setor responsável:
+
+- Salões e churrasqueira: Social.
+- Quadra de Areia: Esportes.
+
+A mensagem enviada ao setor contém ambiente, data, nome, horário e contato do solicitante. Os contatos internos do clube são protegidos para não iniciarem o atendimento automático ao receberem esses encaminhamentos.
 
 ## Contatos
 
@@ -212,7 +218,7 @@ O menu `6 Contatos` exibe os setores em ordem alfabética:
 - Social
 - Tesouraria
 
-As mensagens de reserva e mensalidade também incluem o setor responsável e, quando possível, um link do WhatsApp com mensagem sugerida.
+As mensagens de mensalidade e outros contatos diretos podem incluir link do WhatsApp com mensagem sugerida. Nas reservas, o encaminhamento ao setor responsável é feito automaticamente pelo bot.
 
 ## Grupos
 
@@ -243,7 +249,7 @@ Arquivos locais ignorados pelo Git:
 
 ## Validação
 
-Para conferir sintaxe, fluxos principais, normalização da lista de sócios e proteção contra duplicidade:
+Para conferir sintaxe, fluxos principais, normalização da lista de sócios e proteções operacionais:
 
 ```powershell
 npm.cmd run check
@@ -255,6 +261,8 @@ Esse comando executa:
 - `check:flows`
 - `check:members`
 - `check:guard`
+- `check:groups`
+- `check:internal-contacts`
 
 ## Estrutura do projeto
 
