@@ -16,7 +16,6 @@ O projeto roda no computador do operador, usa planilhas como fonte de dados para
 - Menu de mensalidade com valores, vencimento e contato da tesouraria.
 - Menu de associação com planos, benefícios e envio de materiais.
 - Coleta de feedback com finalização por palavra-chave.
-- Menu de contatos com telefones dos setores do clube e do Ecônomo.
 - Proteção para que contatos internos do clube não recebam atendimento automático.
 - Identificação silenciosa de sócios por telefone, usando índice local codificado.
 - Bloqueio permanente de respostas em grupos.
@@ -45,7 +44,7 @@ Copie o arquivo de exemplo de variáveis, se precisar personalizar fontes ou com
 Copy-Item .env.example .env
 ```
 
-Edite `data/club.json` para alterar nome do clube, menus, contatos, valores, textos de atendimento e materiais anexos.
+Edite `data/club.json` para alterar nome do clube, menus, valores, textos de atendimento, materiais anexos e a estrutura pública dos contatos.
 
 ## Execução
 
@@ -112,6 +111,11 @@ RECONNECT_DELAY_MS=15000
 DEFAULT_PHONE_DDD=47
 MEMBERS_SOURCE=
 MEMBERS_REMOTE_LOOKUP=false
+SECRETARIA_PHONE=
+ECONOMO_PHONE=
+ESPORTES_PHONE=
+TESOURARIA_PHONE=
+SOCIAL_PHONE=
 ```
 
 As URLs das planilhas de eventos, valores e quadra também podem ser configuradas pelo `.env`:
@@ -123,6 +127,8 @@ COURT_SPREADSHEET_URL=
 ```
 
 Quando `PRICING_SPREADSHEET_URL` fica vazio, o bot procura a aba de preços dentro da própria planilha de eventos. Use essa variável apenas se a tabela de valores estiver em um arquivo separado.
+
+Os telefones operacionais dos setores devem ficar apenas no `.env` local. O arquivo `data/club.json` mantém somente a estrutura pública dos contatos.
 
 ## Lista de sócios
 
@@ -208,18 +214,6 @@ Após receber os dados necessários, o bot apresenta o resumo ao usuário e enca
 - Quadra de Areia: Esportes.
 
 A mensagem enviada ao setor contém ambiente, data, nome, horário e contato do solicitante. Os contatos internos do clube são protegidos para não iniciarem o atendimento automático ao receberem esses encaminhamentos.
-
-## Contatos
-
-O menu `6 Contatos` exibe os telefones em ordem alfabética:
-
-- 🍽️ Ecônomo: +55 47 9973-8197
-- 🏐 Esportes - Agenda de reserva da Quadra de Areia: +55 47 9928-0435
-- 🗂️ Secretaria: +55 47 9702-2875
-- 🎊 Social - Agenda de reservas dos salões: +55 47 9767-0749
-- 💳 Tesouraria: +55 47 99767-0771
-
-Nas reservas, o encaminhamento ao setor responsável é feito automaticamente pelo bot. Em contatos diretos, como mensalidade e Ecônomo, o bot pode exibir link do WhatsApp com mensagem sugerida.
 
 ## Grupos
 

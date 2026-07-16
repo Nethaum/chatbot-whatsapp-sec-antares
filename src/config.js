@@ -10,6 +10,13 @@ const rootDir = path.resolve(__dirname, '..');
 const clubPath = path.join(rootDir, 'data', 'club.json');
 const defaultEventsSpreadsheetUrl =
   'https://1drv.ms/x/c/4f4433ee4b2fea3a/IQA66i9L7jNEIIBPN2YAAAAAAVpcm1ifyE8ldoGNslNcYzc?download=1';
+const contactPhoneEnvByArea = {
+  secretaria: 'SECRETARIA_PHONE',
+  economo: 'ECONOMO_PHONE',
+  esportes: 'ESPORTES_PHONE',
+  tesouraria: 'TESOURARIA_PHONE',
+  social: 'SOCIAL_PHONE'
+};
 
 export const settings = {
   botName: process.env.BOT_NAME || 'Assistente do Clube',
@@ -31,7 +38,7 @@ export const settings = {
 
 export function loadClub() {
   const raw = fs.readFileSync(clubPath, 'utf8');
-  return JSON.parse(raw);
+  return withEnvironmentContacts(JSON.parse(raw));
 }
 
 export function rootPath(...parts) {
@@ -46,4 +53,33 @@ function positiveInteger(value, fallback) {
   }
 
   return fallback;
+}
+
+function withEnvironmentContacts(club) {
+  if (!Array.isArray(club.contacts)) {
+    return club;
+  }
+
+  return {
+    ...club,
+    contacts: club.contacts.map((contact) => ({
+      ...contact,
+      phone: contactPhoneFromEnv(contact) || contact.phone
+    }))
+  };
+}
+
+function contactPhoneFromEnv(contact) {
+  const key = normalizeContactArea(contact.area);
+  const envName = contactPhoneEnvByArea[key];
+
+  return envName ? process.env[envName] : '';
+}
+
+function normalizeContactArea(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
 }

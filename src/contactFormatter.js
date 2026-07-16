@@ -12,18 +12,11 @@ export function findContactByArea(club, area) {
   return club.contacts?.find((contact) => normalizeText(contact.area) === normalizeText(area));
 }
 
-export function formatContactRedirect(contact, message) {
-  const link = buildWhatsAppLink(contact.phone, message);
-  const lines = [
+export function formatContactInfo(contact) {
+  return [
     `📲 Atendimento responsável: ${contact.area}`,
     `WhatsApp: ${contact.phone}`
   ];
-
-  if (link) {
-    lines.push(message ? `Abrir mensagem pronta: ${link}` : `Abrir conversa: ${link}`);
-  }
-
-  return lines;
 }
 
 export function formatContactLine(contact) {
@@ -34,17 +27,6 @@ export function sortedContacts(contacts = []) {
   return [...contacts].sort((first, second) =>
     contactLabel(first).localeCompare(contactLabel(second), 'pt-BR', { sensitivity: 'base' })
   );
-}
-
-function buildWhatsAppLink(phone, message) {
-  const digits = String(phone || '').replace(/\D/g, '');
-
-  if (!digits) {
-    return '';
-  }
-
-  const encodedMessage = encodeURIComponent(message || '');
-  return encodedMessage ? `https://wa.me/${digits}?text=${encodedMessage}` : `https://wa.me/${digits}`;
 }
 
 function contactLabel(contact) {

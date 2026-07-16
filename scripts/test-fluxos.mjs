@@ -1,8 +1,8 @@
-import { readFile } from 'node:fs/promises';
 import assert from 'node:assert/strict';
 import { buildPreflightReply, buildReply } from '../src/replies.js';
+import { loadClub } from '../src/config.js';
 
-const club = JSON.parse(await readFile(new URL('../data/club.json', import.meta.url), 'utf8'));
+const club = loadClub();
 
 function replyText(reply) {
   return reply && typeof reply === 'object' ? reply.text : reply;
@@ -44,14 +44,13 @@ assert.doesNotMatch(memberMenu, /Maria da Silva/);
 
 const duesMenu = await ask('3', 'test-dues');
 assert.match(duesMenu, /Tesouraria/);
-assert.match(duesMenu, /\+55 47 99767-0771/);
-assert.match(duesMenu, /https:\/\/wa\.me\/5547997670771/);
+assert.match(duesMenu, /WhatsApp:/);
+assert.doesNotMatch(duesMenu, /wa\.me|Abrir mensagem pronta|Abrir conversa/);
 assert.match(duesMenu, /\*R\$ 100,00\*/);
 assert.match(duesMenu, /\*R\$ 129,00\*/);
 
 const handoffMenu = await ask('atendente', 'test-handoff');
 assert.match(handoffMenu, /Secretaria/);
-assert.match(handoffMenu, /\+55 47 9702-2875/);
 assert.match(handoffMenu, /Ecônomo/);
 
 const addressMenu = await ask('endereço', 'test-address');
@@ -61,8 +60,7 @@ assert.match(addressMenu, /Rodeio/);
 const contactsMenu = await ask('contatos', 'test-contacts');
 assert.match(contactsMenu, /Contatos da SEC Antares/);
 assert.match(contactsMenu, /Tesouraria/);
-assert.match(contactsMenu, /\+55 47 99767-0771/);
-assert.match(contactsMenu, /🍽️ Ecônomo: \+55 47 9973-8197/);
+assert.match(contactsMenu, /🍽️ Ecônomo:/);
 assert.match(contactsMenu, /🍽️ Ecônomo[\s\S]+🏐 Esportes[\s\S]+🗂️ Secretaria[\s\S]+🎊 Social[\s\S]+💳 Tesouraria/);
 
 const contactsMenuByNumber = await ask('6', 'test-contacts-number');
@@ -75,8 +73,8 @@ assert.match(instagramMenu, /sociedade_antares/);
 
 const restaurantMenu = await ask('restaurante', 'test-restaurant');
 assert.match(restaurantMenu, /Ecônomo/);
-assert.match(restaurantMenu, /\+55 47 9973-8197/);
-assert.match(restaurantMenu, /https:\/\/wa\.me\/554799738197/);
+assert.match(restaurantMenu, /WhatsApp:/);
+assert.doesNotMatch(restaurantMenu, /wa\.me|Abrir conversa/);
 
 assert.equal(await ask('enviar', 'test-outside-feedback'), null);
 
@@ -151,7 +149,8 @@ assert.match(reservationConfirmationText, /Horário: 19h/);
 assert.match(reservationConfirmationText, /pagamento da taxa de limpeza/);
 assert.doesNotMatch(reservationConfirmationText, /wa\.me|Abrir mensagem pronta|Atendimento responsável/);
 assert.equal(reservationConfirmation.notifications?.length, 1);
-assert.equal(reservationConfirmation.notifications[0].to, '+55 47 9767-0749');
+assert.equal(reservationConfirmation.notifications[0].area, 'Social');
+assert.ok(reservationConfirmation.notifications[0].to);
 assert.match(reservationConfirmation.notifications[0].text, /Nova solicitação de reserva/);
 assert.match(reservationConfirmation.notifications[0].text, /SEC Antares\n\n🏷️ Ambiente/);
 assert.match(reservationConfirmation.notifications[0].text, /Ambiente: Salão Principal/);

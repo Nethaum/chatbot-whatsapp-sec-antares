@@ -5,8 +5,8 @@ import { buildReservationPricingText } from './reservationPricing.js';
 import { checkCourtAvailability } from './courtAgenda.js';
 import {
   findContactByArea,
+  formatContactInfo,
   formatContactLine,
-  formatContactRedirect,
   sortedContacts
 } from './contactFormatter.js';
 import { formatDate, weekdayName } from './dateUtils.js';
@@ -1791,7 +1791,7 @@ function dues(club) {
     lines.push(
       '',
       '📄 Para consultar situação ou solicitar boleto, entre em contato:',
-      ...formatContactRedirect(billingContact, buildDuesContactMessage())
+      ...formatContactInfo(billingContact)
     );
   } else if (duesInfo.billingContact) {
     lines.push('', '📄 Para consultar situação ou solicitar boleto, entre em contato:', `📞 ${duesInfo.billingContact}`);
@@ -1807,10 +1807,6 @@ function dues(club) {
 function formatDuesValue(item) {
   const emoji = item.emoji ? `${item.emoji} ` : '';
   return `• ${emoji}${item.name}: ${boldMoneyValues(item.amount)}`;
-}
-
-function buildDuesContactMessage() {
-  return 'Olá, gostaria de consultar boleto ou situação financeira da SEC Antares.';
 }
 
 function address(club) {
@@ -1846,7 +1842,7 @@ function restaurant(club) {
     '🍽️ Ecônomo',
     '',
     '📞 Contato:',
-    ...formatContactRedirect(contact)
+    ...formatContactInfo(contact)
   ].join('\n');
 }
 
