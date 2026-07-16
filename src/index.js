@@ -8,6 +8,7 @@ import { acquireInstanceLock, shouldProcessMessage, shouldSendReply } from './me
 import { buildPreflightReply, buildReply, buildWaitNotice } from './replies.js';
 import { compactWhitespace } from './text.js';
 import { isGroupChat, isGroupChatId, isGroupMessage } from './groupPolicy.js';
+import { isInternalContactPhone, isInternalNotificationText } from './internalContacts.js';
 
 const { Client, LocalAuth, MessageMedia } = pkg;
 const club = loadClub();
@@ -150,6 +151,11 @@ async function handleMessage(message) {
       return;
     }
 
+    if (shouldIgnoreInternalContactMessage(body, userPhones, message.from, chatId)) {
+      console.log('Mensagem de contato interno ignorada.');
+      return;
+    }
+
     if (!shouldProcessMessage(message)) {
       console.log('Mensagem duplicada ignorada.');
       return;
@@ -224,6 +230,7 @@ function getMessageChatId(message) {
 async function answerIncomingMessage({ body, chat, chatId, from, isGroup, originalBody, userPhones }) {
   const replyContext = {
     chatId,
+    from,
     userPhone: userPhones[0] || '',
     userPhones
   };
@@ -249,7 +256,11 @@ async function answerIncomingMessage({ body, chat, chatId, from, isGroup, origin
     return;
   }
 
-  await sendReply(chat, reply);
+  const sent = await sendReply(chat, reply);
+
+  if (sent) {
+    await sendReplyNotifications(reply);
+  }
 
   logConversation({
     from,
@@ -324,6 +335,14 @@ async function handleRecoveredUnreadMessage(message) {
   }
 
   const body = compactWhitespace(message.body);
+  const userPhones = uniqueValues([message.from, message.chatId, message.chatTitle].flatMap(extractPhoneCandidates));
+
+  if (shouldIgnoreInternalContactMessage(body, userPhones, message.from, message.chatId)) {
+    console.log('Mensagem nao lida de contato interno ignorada.');
+    await markChatSeen(message.chatId);
+    return;
+  }
+
   const messageForGuard = {
     id: { _serialized: message.id },
     from: message.from || message.chatId,
@@ -337,7 +356,6 @@ async function handleRecoveredUnreadMessage(message) {
   }
 
   const chat = createChatAdapter(message.chatId, isGroup);
-  const userPhones = uniqueValues([message.from, message.chatId, message.chatTitle].flatMap(extractPhoneCandidates));
 
   await answerIncomingMessage({
     body,
@@ -350,6 +368,14 @@ async function handleRecoveredUnreadMessage(message) {
   });
 
   await markChatSeen(message.chatId);
+}
+
+function shouldIgnoreInternalContactMessage(body, userPhones, from, chatId) {
+  if (isInternalNotificationText(body)) {
+    return true;
+  }
+
+  return isInternalContactPhone(club, [userPhones, from, chatId].flat());
 }
 
 function createChatAdapter(chatId, isGroup) {
@@ -486,20 +512,23 @@ async function sendReply(chat, reply) {
   if (typeof reply === 'string') {
     if (!shouldSendReply(chatId, reply)) {
       console.log('Resposta duplicada suprimida.');
-      return;
+      return false;
     }
 
     await sendMessageSafely(chat, reply, undefined, 'texto');
-    return;
+    return true;
   }
+
+  let sent = false;
 
   if (reply.text) {
     if (!shouldSendReply(chatId, reply.text)) {
       console.log('Resposta duplicada suprimida.');
-      return;
+      return false;
     }
 
     await sendMessageSafely(chat, reply.text, undefined, 'texto');
+    sent = true;
   }
 
   for (const mediaItem of reply.media || []) {
@@ -513,7 +542,40 @@ async function sendReply(chat, reply) {
     const media = MessageMedia.fromFilePath(mediaPath);
     const options = mediaItem.caption ? { caption: mediaItem.caption } : undefined;
     await sendMessageSafely(chat, media, options, `mídia ${path.basename(mediaPath)}`);
+    sent = true;
   }
+
+  return sent;
+}
+
+async function sendReplyNotifications(reply) {
+  if (!reply || typeof reply !== 'object' || !Array.isArray(reply.notifications)) {
+    return;
+  }
+
+  for (const notification of reply.notifications) {
+    await sendInternalNotification(notification);
+  }
+}
+
+async function sendInternalNotification(notification) {
+  const chatId = notification?.chatId || phoneToPrivateChatId(notification?.to);
+
+  if (!chatId || !notification?.text) {
+    return;
+  }
+
+  try {
+    await sendMessageSafely(createChatAdapter(chatId, false), notification.text, undefined, 'encaminhamento interno');
+  } catch (error) {
+    const destination = notification.area || notification.to || chatId;
+    console.error(`Falha ao encaminhar solicitação para ${destination}:`, formatErrorForLog(error));
+  }
+}
+
+function phoneToPrivateChatId(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  return digits ? `${digits}@c.us` : '';
 }
 
 async function sendMessageSafely(chat, content, options, label) {
@@ -553,7 +615,8 @@ function formatReplyForLog(reply) {
   }
 
   const media = (reply.media || []).map((item) => `[mídia: ${item.path || item}]`);
-  return [reply.text, ...media].filter(Boolean).join('\n');
+  const notifications = (reply.notifications || []).map((item) => `[encaminhamento: ${item.area || item.to}]`);
+  return [reply.text, ...media, ...notifications].filter(Boolean).join('\n');
 }
 
 async function startClient() {

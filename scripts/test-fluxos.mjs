@@ -22,6 +22,15 @@ async function askAsMember(input, chatId) {
   );
 }
 
+async function askAsMemberRaw(input, chatId, context = {}) {
+  return buildReply(input, club, {
+    chatId,
+    memberPreflightDone: true,
+    member: { name: 'Maria da Silva' },
+    ...context
+  });
+}
+
 const mainMenu = await ask('oi', 'test-main-menu');
 assert.match(mainMenu, /Bem-vindo\(a\)/);
 assert.match(mainMenu, /Reservas/);
@@ -131,5 +140,22 @@ const memberReservationPrompt = await askAsMember('sim', 'test-member-reservatio
 assert.match(memberReservationPrompt, /Nome: Maria da Silva/);
 assert.match(memberReservationPrompt, /Horário de início do evento/);
 assert.doesNotMatch(memberReservationPrompt, /Nome completo do responsável/);
+
+const reservationConfirmation = await askAsMemberRaw('19h', 'test-member-reservation', {
+  userPhone: '5547999990000',
+  userPhones: ['5547999990000']
+});
+const reservationConfirmationText = replyText(reservationConfirmation);
+assert.match(reservationConfirmationText, /Solicitação recebida/);
+assert.match(reservationConfirmationText, /Horário: 19h/);
+assert.doesNotMatch(reservationConfirmationText, /wa\.me|Abrir mensagem pronta|Atendimento responsável/);
+assert.equal(reservationConfirmation.notifications?.length, 1);
+assert.equal(reservationConfirmation.notifications[0].to, '+55 47 9767-0749');
+assert.match(reservationConfirmation.notifications[0].text, /Nova solicitação de reserva/);
+assert.match(reservationConfirmation.notifications[0].text, /Ambiente: Salão Principal/);
+assert.match(reservationConfirmation.notifications[0].text, /Data: 30\/12\/2026 \(Quarta-feira\)/);
+assert.match(reservationConfirmation.notifications[0].text, /Nome: Maria da Silva/);
+assert.match(reservationConfirmation.notifications[0].text, /Horário: 19h/);
+assert.match(reservationConfirmation.notifications[0].text, /Contato do solicitante: \+55 47 99999-0000/);
 
 console.log('Fluxos essenciais conferidos.');

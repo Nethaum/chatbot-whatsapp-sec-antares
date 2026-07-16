@@ -116,7 +116,9 @@ export async function buildPreflightReply(input, context = {}) {
 function contextUserPhones(context) {
   return [
     ...(Array.isArray(context.userPhones) ? context.userPhones : []),
-    context.userPhone
+    context.userPhone,
+    context.from,
+    context.chatId
   ].filter(Boolean);
 }
 
@@ -141,7 +143,7 @@ export async function buildReply(input, club, context = {}) {
   const feedbackState = feedbackStates.get(chatId);
 
   if (reservationState) {
-    return handleActiveReservationState(input, text, reservationState, club, chatId);
+    return handleActiveReservationState(input, text, reservationState, club, chatId, context);
   }
 
   if (membershipState) {
@@ -203,7 +205,7 @@ function reservationWaitNotice(text, state) {
   return null;
 }
 
-async function handleActiveReservationState(input, text, state, club, chatId) {
+async function handleActiveReservationState(input, text, state, club, chatId, context = {}) {
   if (shouldShowContextMainMenu(text)) {
     return resetToMainMenu(chatId, club);
   }
@@ -221,7 +223,7 @@ async function handleActiveReservationState(input, text, state, club, chatId) {
   }
 
   if (shouldPrioritizeReservationDetails(input, state)) {
-    return handleReservationDetailsInput(input, state, club, chatId);
+    return handleReservationDetailsInput(input, state, club, chatId, context);
   }
 
   if (state.step === 'awaiting_court_date') {
@@ -261,7 +263,7 @@ async function handleActiveReservationState(input, text, state, club, chatId) {
 
   switch (state.step) {
     case 'awaiting_reservation_details':
-      return handleReservationDetailsInput(input, state, club, chatId);
+      return handleReservationDetailsInput(input, state, club, chatId, context);
     default:
       clearReservationState(chatId);
       return null;
@@ -790,7 +792,7 @@ function isChangeRequest(text) {
   return isOneOf(text, changeDateTriggers);
 }
 
-function handleReservationDetailsInput(input, state, club, chatId) {
+function handleReservationDetailsInput(input, state, club, chatId, context = {}) {
   const { choice } = state;
   const text = normalizeText(input);
 
@@ -816,7 +818,7 @@ function handleReservationDetailsInput(input, state, club, chatId) {
 
   if (details.name && details.time) {
     clearReservationState(chatId);
-    return withParentShortcuts(reservationRequestReceived(choice, details, state.selectedDate, club), 'reservations');
+    return withParentShortcuts(reservationRequestReceived(choice, details, state.selectedDate, club, context), 'reservations');
   }
 
   reservationStates.set(chatId, {
@@ -1393,40 +1395,103 @@ function askAnotherReservationDate(choice) {
   ].join('\n');
 }
 
-function reservationRequestReceived(choice, details, selectedDate, club) {
-  return [
+function reservationRequestReceived(choice, details, selectedDate, club, context = {}) {
+  const text = [
     `${choice.emoji} ${choice.name}`,
     '',
     '✅ Solicitação recebida.',
     ...formatKnownReservationDetails(details, selectedDate),
     '',
-    '📞 Nossa equipe confirmará a reserva e retornará o contato em breve.',
-    ...formatReservationContact(choice, details, selectedDate, club)
+    '📞 Nossa equipe confirmará a reserva e retornará o contato em breve.'
   ].join('\n');
+
+  const notification = buildReservationNotification(choice, details, selectedDate, club, context);
+
+  if (!notification) {
+    return text;
+  }
+
+  return {
+    text,
+    notifications: [notification]
+  };
 }
 
-function formatReservationContact(choice, details, selectedDate, club) {
+function buildReservationNotification(choice, details, selectedDate, club, context) {
   const contact = findContactByArea(club, choice.type === 'court' ? 'Esportes' : 'Social');
 
   if (!contact) {
-    return [];
+    return null;
   }
 
-  const message = buildReservationContactMessage(choice, details, selectedDate);
-
-  return ['', ...formatContactRedirect(contact, message)];
+  return {
+    to: contact.phone,
+    area: contact.area,
+    text: buildReservationNotificationText(choice, details, selectedDate, context)
+  };
 }
 
-function buildReservationContactMessage(choice, details, selectedDate) {
+function buildReservationNotificationText(choice, details, selectedDate, context) {
   return [
-    'Olá, gostaria de confirmar uma reserva na SEC Antares.',
-    `Ambiente: ${choice.name}.`,
-    selectedDate ? `Data: ${formatDateWithWeekday(selectedDate)}.` : null,
-    details?.name ? `Nome: ${details.name}.` : null,
-    details?.time ? `Horário: ${details.time}.` : null
+    '📌 Nova solicitação de reserva - SEC Antares',
+    '',
+    `🏷️ Ambiente: ${choice.name}`,
+    selectedDate ? `🗓️ Data: ${formatDateWithWeekday(selectedDate)}` : null,
+    details?.name ? `👤 Nome: ${details.name}` : null,
+    details?.time ? `🕒 Horário: ${details.time}` : null,
+    `📱 Contato do solicitante: ${formatRequesterContact(context)}`,
+    '',
+    'Encaminhado automaticamente pelo atendimento da SEC Antares.'
   ]
     .filter(Boolean)
-    .join(' ');
+    .join('\n');
+}
+
+function formatRequesterContact(context = {}) {
+  const phone = contextUserPhones(context)
+    .map(extractDisplayPhoneDigits)
+    .find(isDisplayPhone);
+
+  return phone ? formatPhoneForDisplay(phone) : 'não identificado pelo WhatsApp';
+}
+
+function extractDisplayPhoneDigits(value) {
+  const text = String(value || '').trim();
+
+  if (!text || /@lid\b/i.test(text)) {
+    return '';
+  }
+
+  return text.replace(/@.+$/, '').replace(/\D/g, '');
+}
+
+function isDisplayPhone(value) {
+  return value.length >= 8 && value.length <= 16;
+}
+
+function formatPhoneForDisplay(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+  const nationalDigits = digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits;
+
+  if (nationalDigits.length === 10 || nationalDigits.length === 11) {
+    const ddd = nationalDigits.slice(0, 2);
+    const subscriber = nationalDigits.slice(2);
+    return `${digits.startsWith('55') ? '+55 ' : ''}${ddd} ${formatSubscriberNumber(subscriber)}`;
+  }
+
+  return digits.startsWith('55') ? `+${digits}` : digits;
+}
+
+function formatSubscriberNumber(value) {
+  if (value.length === 9) {
+    return `${value.slice(0, 5)}-${value.slice(5)}`;
+  }
+
+  if (value.length === 8) {
+    return `${value.slice(0, 4)}-${value.slice(4)}`;
+  }
+
+  return value;
 }
 
 function reservationRequestPaused(choice) {

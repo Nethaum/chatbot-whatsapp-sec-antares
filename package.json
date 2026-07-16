@@ -19,12 +19,13 @@
     "members:update:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/status-members-update-task.ps1",
     "members:update:uninstall": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-members-update-task.ps1",
     "dev": "node --watch src/index.js",
-    "check": "npm run check:syntax && npm run check:flows && npm run check:members && npm run check:guard && npm run check:groups",
+    "check": "npm run check:syntax && npm run check:flows && npm run check:members && npm run check:guard && npm run check:groups && npm run check:internal-contacts",
     "check:syntax": "node scripts/check-syntax.mjs",
     "check:flows": "node scripts/test-fluxos.mjs",
     "check:members": "node scripts/test-socios.mjs",
     "check:guard": "node scripts/test-duplicidade.mjs",
-    "check:groups": "node scripts/test-grupos.mjs"
+    "check:groups": "node scripts/test-grupos.mjs",
+    "check:internal-contacts": "node scripts/test-contatos-internos.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
