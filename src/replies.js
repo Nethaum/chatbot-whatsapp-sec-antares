@@ -48,6 +48,26 @@ const reservationTimePattern = `(?:${markedTimePattern}|${hourNumberPattern})`;
 const reservationTimeRegex = new RegExp(`\\b${reservationTimePattern}\\b`, 'i');
 const reservationTimeGlobalRegex = new RegExp(`\\b${reservationTimePattern}\\b`, 'gi');
 const dateMentionGlobalRegex = /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g;
+const duesActionMap = {
+  31: {
+    label: 'Solicitação de boleto',
+    menuLabel: 'Solicitar boleto',
+    emoji: '📄',
+    type: 'request_boleto'
+  },
+  32: {
+    label: 'Consulta de situação financeira',
+    menuLabel: 'Consultar situação',
+    emoji: '🔎',
+    type: 'check_status'
+  },
+  33: {
+    label: 'Informações sobre mensalidade',
+    menuLabel: 'Informações',
+    emoji: 'ℹ️',
+    type: 'information'
+  }
+};
 
 export function buildWaitNotice(input, context = {}) {
   const text = normalizeText(input);
@@ -74,6 +94,10 @@ export function buildWaitNotice(input, context = {}) {
 
   if (intentKey === 'membership') {
     return '⏳ Só um instante, estou preparando o material de apresentação.';
+  }
+
+  if (isDuesNotificationAction(text)) {
+    return '⏳ Só um instante, estou encaminhando sua solicitação para a Tesouraria.';
   }
 
   return null;
@@ -166,6 +190,12 @@ export async function buildReply(input, club, context = {}) {
     return closeConversation(chatId, club);
   }
 
+  if (duesActionMap[text]) {
+    clearMembershipState(chatId);
+    clearFeedbackState(chatId);
+    return handleDuesAction(duesActionMap[text], club, chatId, context);
+  }
+
   if (reservationNumberMap[text]) {
     clearMembershipState(chatId);
     clearFeedbackState(chatId);
@@ -187,6 +217,11 @@ function shouldSkipWaitNotice(text) {
     isDateConfirmation(text) ||
     isNegativeConfirmation(text)
   );
+}
+
+function isDuesNotificationAction(text) {
+  const action = duesActionMap[text];
+  return action && action.type !== 'information';
 }
 
 function reservationWaitNotice(text, state) {
@@ -369,6 +404,16 @@ function closeConversation(chatId, club) {
   return closing(club);
 }
 
+function handleDuesAction(action, club, chatId, context = {}) {
+  setNavigationScreen(chatId, 'dues');
+
+  if (action.type === 'information') {
+    return withParentShortcuts(duesInformation(club), 'dues');
+  }
+
+  return withParentShortcuts(duesRequestReceived(action, club, context, getSenderMember(chatId)), 'dues');
+}
+
 function senderAccessAllowed(chatId) {
   const access = senderAccessStates.get(chatId);
 
@@ -427,7 +472,7 @@ async function replyForIntent(intentKey, club, chatId) {
     case 'events':
       return withNavigationShortcuts(events(await buildEventsReply(), club), 'events');
     case 'dues':
-      return withNavigationShortcuts(dues(club), 'dues');
+      return withNavigationShortcuts(duesMenu(), 'dues');
     case 'address':
       return withNavigationShortcuts(address(club));
     case 'hours':
@@ -1765,7 +1810,24 @@ function formatReservationSpace(space) {
   return reservationSpaces[space.option] || `${space.option}. ${space.name}`;
 }
 
-function dues(club) {
+function duesMenu() {
+  return [
+    '💳 Mensalidade',
+    '',
+    '❓ Escolha uma opção:',
+    '',
+    ...Object.entries(duesActionMap).map(([option, action]) => `${formatOptionEmoji(option)} ${action.menuLabel} ${action.emoji}`)
+  ].join('\n');
+}
+
+function formatOptionEmoji(option) {
+  return String(option)
+    .split('')
+    .map((digit) => `${digit}️⃣`)
+    .join('');
+}
+
+function duesInformation(club) {
   const duesInfo = club.dues || {};
   const lines = ['💳 Mensalidade'];
 
@@ -1785,23 +1847,61 @@ function dues(club) {
     lines.push(duesInfo.dependentNote);
   }
 
-  const billingContact = findContactByArea(club, 'Tesouraria');
-
-  if (billingContact) {
-    lines.push(
-      '',
-      '📄 Para consultar situação ou solicitar boleto, entre em contato:',
-      ...formatContactInfo(billingContact)
-    );
-  } else if (duesInfo.billingContact) {
-    lines.push('', '📄 Para consultar situação ou solicitar boleto, entre em contato:', `📞 ${duesInfo.billingContact}`);
-  }
-
   if (lines.length === 1) {
     lines.push('', '💬 Consulte a secretaria para informações de pagamento.');
   }
 
   return lines.join('\n');
+}
+
+function duesRequestReceived(action, club, context, member) {
+  const text = [
+    '💳 Mensalidade',
+    '',
+    '✅ Solicitação recebida.',
+    '',
+    `📌 Pedido: ${action.label}.`,
+    '📞 A Tesouraria retornará o contato em breve.'
+  ].join('\n');
+
+  const notification = buildDuesNotification(action, club, context, member);
+
+  if (!notification) {
+    return text;
+  }
+
+  return {
+    text,
+    notifications: [notification]
+  };
+}
+
+function buildDuesNotification(action, club, context, member) {
+  const contact = findContactByArea(club, 'Tesouraria');
+
+  if (!contact) {
+    return null;
+  }
+
+  return {
+    to: contact.phone,
+    area: contact.area,
+    text: buildDuesNotificationText(action, context, member)
+  };
+}
+
+function buildDuesNotificationText(action, context, member) {
+  return [
+    '📌 Nova solicitação financeira - SEC Antares',
+    '',
+    `${action.emoji} Pedido: ${action.label}`,
+    member?.name ? `👤 Nome: ${member.name}` : null,
+    `📱 Contato do solicitante: ${formatRequesterContact(context)}`,
+    '',
+    'Encaminhado automaticamente pelo atendimento da SEC Antares.'
+  ]
+    .filter((line) => line !== null && line !== undefined)
+    .join('\n');
 }
 
 function formatDuesValue(item) {

@@ -13,7 +13,7 @@ O projeto roda no computador do operador, usa planilhas como fonte de dados para
 - Consulta de disponibilidade de datas e sugestões alternativas.
 - Consulta de horários da quadra de areia conforme regras da agenda.
 - Encaminhamento automático das solicitações de reserva ao setor responsável.
-- Menu de mensalidade com valores, vencimento e contato da tesouraria.
+- Menu de mensalidade com solicitação de boleto, consulta de situação e informações gerais.
 - Menu de associação com planos, benefícios e envio de materiais.
 - Coleta de feedback com finalização por palavra-chave.
 - Proteção para que contatos internos do clube não recebam atendimento automático.
@@ -187,6 +187,16 @@ Critérios usados:
 - As colunas de tipo de evento e horário devem estar preenchidas.
 - Apenas eventos futuros do ano corrente são exibidos.
 - No fim do ano, podem ser exibidos eventos dos próximos meses do ano seguinte, dentro do limite configurado no fluxo.
+
+## Mensalidade
+
+O menu de mensalidade oferece três opções:
+
+- Solicitar boleto.
+- Consultar situação financeira.
+- Ver informações sobre vencimento, valores e dependentes.
+
+As solicitações de boleto e consulta de situação são encaminhadas automaticamente para a Tesouraria com o contato do solicitante.
 
 ## Reservas
 

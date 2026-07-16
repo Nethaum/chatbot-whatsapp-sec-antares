@@ -43,11 +43,40 @@ assert.match(memberMenu, /(Bom dia|Boa tarde|Boa noite), Maria!/);
 assert.doesNotMatch(memberMenu, /Maria da Silva/);
 
 const duesMenu = await ask('3', 'test-dues');
-assert.match(duesMenu, /Tesouraria/);
-assert.match(duesMenu, /WhatsApp:/);
+assert.match(duesMenu, /Mensalidade/);
+assert.match(duesMenu, /3️⃣1️⃣ Solicitar boleto/);
+assert.match(duesMenu, /3️⃣2️⃣ Consultar situação/);
+assert.match(duesMenu, /3️⃣3️⃣ Informações/);
 assert.doesNotMatch(duesMenu, /wa\.me|Abrir mensagem pronta|Abrir conversa/);
-assert.match(duesMenu, /\*R\$ 100,00\*/);
-assert.match(duesMenu, /\*R\$ 129,00\*/);
+
+const duesInfo = await ask('33', 'test-dues-info');
+assert.match(duesInfo, /Vencimento/);
+assert.match(duesInfo, /\*R\$ 100,00\*/);
+assert.match(duesInfo, /\*R\$ 129,00\*/);
+assert.match(duesInfo, /dependentes/);
+assert.doesNotMatch(duesInfo, /WhatsApp:|wa\.me|Abrir mensagem pronta|Abrir conversa/);
+
+const boletoRequest = await askAsMemberRaw('31', 'test-dues-boleto', {
+  userPhone: '5547999990000',
+  userPhones: ['5547999990000']
+});
+const boletoRequestText = replyText(boletoRequest);
+assert.match(boletoRequestText, /Solicitação recebida/);
+assert.match(boletoRequestText, /Solicitação de boleto/);
+assert.match(boletoRequestText, /Tesouraria retornará/);
+assert.equal(boletoRequest.notifications?.length, 1);
+assert.equal(boletoRequest.notifications[0].area, 'Tesouraria');
+assert.match(boletoRequest.notifications[0].text, /Nova solicitação financeira/);
+assert.match(boletoRequest.notifications[0].text, /Pedido: Solicitação de boleto/);
+assert.match(boletoRequest.notifications[0].text, /Nome: Maria da Silva/);
+assert.match(boletoRequest.notifications[0].text, /Contato do solicitante: \+55 47 99999-0000/);
+
+const financialStatusRequest = await askAsMemberRaw('32', 'test-dues-status', {
+  userPhone: '5547999990000',
+  userPhones: ['5547999990000']
+});
+assert.match(replyText(financialStatusRequest), /Consulta de situação financeira/);
+assert.equal(financialStatusRequest.notifications?.[0]?.area, 'Tesouraria');
 
 const handoffMenu = await ask('atendente', 'test-handoff');
 assert.match(handoffMenu, /Secretaria/);
