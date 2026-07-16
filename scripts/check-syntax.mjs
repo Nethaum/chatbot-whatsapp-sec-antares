@@ -5,6 +5,9 @@ const files = [
   'src/replies.js',
   'src/replyLexicon.js',
   'src/config.js',
+  'src/contactFormatter.js',
+  'src/groupPolicy.js',
+  'src/internalContacts.js',
   'src/messageGuard.js',
   'src/memberRegistry.js',
   'src/memberIndex.js',
@@ -20,7 +23,10 @@ const files = [
   'scripts/find-member.mjs',
   'scripts/test-socios.mjs',
   'scripts/test-fluxos.mjs',
-  'scripts/test-duplicidade.mjs'
+  'scripts/test-datas.mjs',
+  'scripts/test-duplicidade.mjs',
+  'scripts/test-grupos.mjs',
+  'scripts/test-contatos-internos.mjs'
 ];
 
 for (const file of files) {

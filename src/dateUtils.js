@@ -1,6 +1,32 @@
 const timeZone = 'America/Sao_Paulo';
 const dayMs = 24 * 60 * 60 * 1000;
 const dayNames = ['domingo', 'segunda-feira', 'terça-feira', 'quarta-feira', 'quinta-feira', 'sexta-feira', 'sábado'];
+const monthNames = new Map([
+  ['janeiro', 1],
+  ['jan', 1],
+  ['fevereiro', 2],
+  ['fev', 2],
+  ['marco', 3],
+  ['mar', 3],
+  ['abril', 4],
+  ['abr', 4],
+  ['maio', 5],
+  ['mai', 5],
+  ['junho', 6],
+  ['jun', 6],
+  ['julho', 7],
+  ['jul', 7],
+  ['agosto', 8],
+  ['ago', 8],
+  ['setembro', 9],
+  ['set', 9],
+  ['outubro', 10],
+  ['out', 10],
+  ['novembro', 11],
+  ['nov', 11],
+  ['dezembro', 12],
+  ['dez', 12]
+]);
 
 export function parseDateText(value, now = new Date()) {
   const text = String(value || '').trim();
@@ -10,15 +36,13 @@ export function parseDateText(value, now = new Date()) {
     return nextDateForDay(Number(dayOnlyMatch[1]), now);
   }
 
-  const match = text.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+  const numericDate = parseNumericDate(text, now);
 
-  if (!match) {
-    return null;
+  if (numericDate) {
+    return numericDate;
   }
 
-  const year = match[3] ? normalizeYear(match[3]) : todayInTimeZone(now).year;
-
-  return buildDateParts(Number(match[1]), Number(match[2]), year);
+  return parseWrittenMonthDate(text, now);
 }
 
 export function readDate(value) {
@@ -123,4 +147,42 @@ function nextDateForDay(day, now) {
   }
 
   return null;
+}
+
+function parseNumericDate(text, now) {
+  const match = text.match(/^(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const year = match[3] ? normalizeYear(match[3]) : todayInTimeZone(now).year;
+  return buildDateParts(Number(match[1]), Number(match[2]), year);
+}
+
+function parseWrittenMonthDate(text, now) {
+  const match = normalizeDateText(text).match(/^(\d{1,2})(?:\s+de)?\s+([a-z]+)(?:\s+de)?(?:\s+(\d{2,4}))?$/);
+
+  if (!match) {
+    return null;
+  }
+
+  const month = monthNames.get(match[2]);
+
+  if (!month) {
+    return null;
+  }
+
+  const year = match[3] ? normalizeYear(match[3]) : todayInTimeZone(now).year;
+  return buildDateParts(Number(match[1]), month, year);
+}
+
+function normalizeDateText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[.,/-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }

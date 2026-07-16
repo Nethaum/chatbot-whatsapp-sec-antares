@@ -1298,7 +1298,7 @@ function invalidReservationDate(choice) {
     `${choice.emoji} ${choice.name}.`,
     '',
     '❌ Não consegui identificar a data.',
-    '💡 Exemplo: 25/12'
+    '💡 Exemplo: 25/12 ou 25 julho'
   ].join('\n');
 }
 
@@ -1311,7 +1311,7 @@ function pastReservationDate(choice) {
     `${choice.emoji} ${choice.name}.`,
     '',
     '📅 Informe uma data futura para consultar a disponibilidade.',
-    `💡 Exemplo: 25/12 ou ${dateExampleWithNextYear()}`
+    `💡 Exemplo: 25/12, 25 julho ou ${dateExampleWithNextYear()}`
   ].join('\n');
 }
 
@@ -1401,6 +1401,7 @@ function reservationRequestReceived(choice, details, selectedDate, club, context
     '',
     '✅ Solicitação recebida.',
     ...formatKnownReservationDetails(details, selectedDate),
+    ...reservationConfirmationNotes(choice),
     '',
     '📞 Nossa equipe confirmará a reserva e retornará o contato em breve.'
   ].join('\n');
@@ -1415,6 +1416,17 @@ function reservationRequestReceived(choice, details, selectedDate, club, context
     text,
     notifications: [notification]
   };
+}
+
+function reservationConfirmationNotes(choice) {
+  if (choice.type === 'court') {
+    return [];
+  }
+
+  return [
+    '',
+    '💰 A confirmação da reserva depende da validação do setor responsável e do pagamento da taxa de limpeza.'
+  ];
 }
 
 function buildReservationNotification(choice, details, selectedDate, club, context) {
@@ -1443,7 +1455,7 @@ function buildReservationNotificationText(choice, details, selectedDate, context
     '',
     'Encaminhado automaticamente pelo atendimento da SEC Antares.'
   ]
-    .filter(Boolean)
+    .filter((line) => line !== null && line !== undefined)
     .join('\n');
 }
 

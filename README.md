@@ -193,6 +193,7 @@ Para salões e churrasqueira, o bot:
 - Informa se a data está disponível.
 - Sugere datas alternativas no mesmo dia da semana, quando necessário.
 - Confirma data, nome e horário antes de registrar a solicitação.
+- Informa que a confirmação depende da validação do setor responsável e do pagamento da taxa de limpeza.
 
 Para a quadra de areia, o bot:
 
@@ -222,7 +223,7 @@ As mensagens de mensalidade e outros contatos diretos podem incluir link do What
 
 ## Grupos
 
-O bot foi projetado para atendimento individual. Mensagens recebidas em grupos são sempre ignoradas, inclusive quando há mensagens não lidas no momento em que o bot inicia.
+O bot atende apenas conversas individuais. Mensagens recebidas em grupos são sempre ignoradas, inclusive quando há mensagens não lidas no momento em que o bot inicia.
 
 ## Logs e privacidade
 
@@ -259,6 +260,7 @@ Esse comando executa:
 
 - `check:syntax`
 - `check:flows`
+- `check:dates`
 - `check:members`
 - `check:guard`
 - `check:groups`
