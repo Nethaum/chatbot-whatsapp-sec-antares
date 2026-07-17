@@ -2,7 +2,7 @@ import ExcelJS from 'exceljs';
 import { settings } from './config.js';
 import { normalizeText } from './text.js';
 import { downloadWorkbook } from './workbookDownloader.js';
-import { cellText, cellValue } from './excelUtils.js';
+import { cellText } from './excelUtils.js';
 import { buildDateParts, dateKey, isWeekend, normalizeYear, parseDateText, todayInTimeZone, weekdayName } from './dateUtils.js';
 
 const courtSheetName = 'Agenda Quadra de Areia';

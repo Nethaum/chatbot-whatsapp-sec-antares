@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import { rootPath, settings } from './config.js';
 import { cellText } from './excelUtils.js';
-import { normalizeText } from './text.js';
+import { normalizeText, uniqueValues } from './text.js';
 import { downloadWorkbook } from './workbookDownloader.js';
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
@@ -536,7 +536,7 @@ export function phoneSuffixLookupKey(value) {
   return suffix ? `suffix8:${suffix}` : '';
 }
 
-export function phoneSuffix8(value) {
+function phoneSuffix8(value) {
   const digits = onlyDigits(String(value || '').replace(/@.+$/, ''));
   return digits.length >= 8 ? digits.slice(-8) : '';
 }
@@ -618,10 +618,6 @@ function onlyDigits(value) {
 function normalizeDdd(value) {
   const digits = onlyDigits(value);
   return digits.length === 2 ? digits : '';
-}
-
-function uniqueValues(values) {
-  return [...new Set(values.filter(Boolean))];
 }
 
 export function phoneHash(value) {

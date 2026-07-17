@@ -1,8 +1,26 @@
 import assert from 'node:assert/strict';
-import { buildPreflightReply, buildReply } from '../src/replies.js';
+import { buildPreflightReply, buildReply, buildWaitNotice } from '../src/replies.js';
 import { loadClub } from '../src/config.js';
 
-const club = loadClub();
+const club = withOperationalContactPhones(loadClub());
+
+function withOperationalContactPhones(clubConfig) {
+  const phonesByArea = {
+    Secretaria: '+55 47 98888-0001',
+    Ecônomo: '+55 47 98888-0002',
+    Esportes: '+55 47 98888-0003',
+    Tesouraria: '+55 47 98888-0004',
+    Social: '+55 47 98888-0005'
+  };
+
+  return {
+    ...clubConfig,
+    contacts: clubConfig.contacts.map((contact) => ({
+      ...contact,
+      phone: phonesByArea[contact.area] || contact.phone
+    }))
+  };
+}
 
 function replyText(reply) {
   return reply && typeof reply === 'object' ? reply.text : reply;
@@ -66,9 +84,9 @@ assert.match(boletoRequestText, /Solicitação de boleto/);
 assert.match(boletoRequestText, /Tesouraria retornará/);
 assert.equal(boletoRequest.notifications?.length, 1);
 assert.equal(boletoRequest.notifications[0].area, 'Tesouraria');
-assert.match(boletoRequest.notifications[0].text, /Nova solicitação financeira/);
-assert.match(boletoRequest.notifications[0].text, /Pedido: Solicitação de boleto/);
-assert.match(boletoRequest.notifications[0].text, /Nome: Maria da Silva/);
+assert.match(boletoRequest.notifications[0].text, /Nova solicitação para \*Tesouraria\*/);
+assert.match(boletoRequest.notifications[0].text, /Pedido: \*Solicitação de boleto\*/);
+assert.match(boletoRequest.notifications[0].text, /Nome: \*Maria da Silva\*/);
 assert.match(boletoRequest.notifications[0].text, /Contato do solicitante: \+55 47 99999-0000/);
 
 const financialStatusRequest = await askAsMemberRaw('32', 'test-dues-status', {
@@ -77,6 +95,64 @@ const financialStatusRequest = await askAsMemberRaw('32', 'test-dues-status', {
 });
 assert.match(replyText(financialStatusRequest), /Consulta de situação financeira/);
 assert.equal(financialStatusRequest.notifications?.[0]?.area, 'Tesouraria');
+
+const duesUnknownWaitNotice = buildWaitNotice('31', { chatId: 'test-dues-unknown-name' });
+assert.equal(duesUnknownWaitNotice, null);
+
+const duesNamePrompt = await buildReply('31', club, { chatId: 'test-dues-unknown-name', memberPreflightDone: true });
+const duesNamePromptText = replyText(duesNamePrompt);
+assert.match(duesNamePromptText, /Solicitação de boleto/);
+assert.match(duesNamePromptText, /Não localizei seu cadastro/);
+assert.match(duesNamePromptText, /nome completo do sócio titular/);
+assert.equal(duesNamePrompt.notifications, undefined);
+
+const duesNamedRequest = await buildReply('Carlos Eduardo Testoni', club, {
+  chatId: 'test-dues-unknown-name',
+  memberPreflightDone: true
+});
+const duesNamedRequestText = replyText(duesNamedRequest);
+assert.match(duesNamedRequestText, /Solicitação recebida/);
+assert.equal(duesNamedRequest.notifications?.length, 1);
+assert.match(duesNamedRequest.notifications[0].text, /Nova solicitação para \*Tesouraria\*/);
+assert.match(duesNamedRequest.notifications[0].text, /Pedido: \*Solicitação de boleto\*/);
+assert.match(duesNamedRequest.notifications[0].text, /Nome: \*Carlos Eduardo Testoni\*/);
+
+const duesInvalidNamePrompt = await buildReply('32', club, { chatId: 'test-dues-invalid-name', memberPreflightDone: true });
+assert.match(replyText(duesInvalidNamePrompt), /nome completo do sócio titular/);
+const duesInvalidNameRetry = await buildReply('ok', club, { chatId: 'test-dues-invalid-name', memberPreflightDone: true });
+assert.match(replyText(duesInvalidNameRetry), /Não entendi o nome informado/);
+
+await buildReply('31', club, { chatId: 'test-dues-back-to-menu', memberPreflightDone: true });
+const duesBackToMenu = await buildReply('3', club, { chatId: 'test-dues-back-to-menu', memberPreflightDone: true });
+assert.match(replyText(duesBackToMenu), /3️⃣1️⃣ Solicitar boleto/);
+
+await buildReply('31', club, { chatId: 'test-dues-change-action', memberPreflightDone: true });
+const changedDuesAction = await buildReply('32', club, { chatId: 'test-dues-change-action', memberPreflightDone: true });
+assert.match(replyText(changedDuesAction), /Consulta de situação financeira/);
+assert.match(replyText(changedDuesAction), /nome completo do sócio titular/);
+
+const clubWithoutTreasuryPhone = {
+  ...club,
+  contacts: club.contacts.map((contact) =>
+    contact.area === 'Tesouraria' ? { ...contact, phone: 'Configurar TESOURARIA_PHONE no .env' } : contact
+  )
+};
+const unavailableTreasuryRequest = await buildReply('31', clubWithoutTreasuryPhone, {
+  chatId: 'test-dues-missing-treasury-phone',
+  memberPreflightDone: true,
+  member: { name: 'Maria da Silva' },
+  userPhone: '5547999990000',
+  userPhones: ['5547999990000']
+});
+assert.match(replyText(unavailableTreasuryRequest), /Não foi possível encaminhar/);
+assert.equal(unavailableTreasuryRequest.notifications, undefined);
+
+const clubWithoutSocialPhone = {
+  ...club,
+  contacts: club.contacts.map((contact) =>
+    contact.area === 'Social' ? { ...contact, phone: 'Configurar SOCIAL_PHONE no .env' } : contact
+  )
+};
 
 const handoffMenu = await ask('atendente', 'test-handoff');
 assert.match(handoffMenu, /Secretaria/);
@@ -180,13 +256,43 @@ assert.doesNotMatch(reservationConfirmationText, /wa\.me|Abrir mensagem pronta|A
 assert.equal(reservationConfirmation.notifications?.length, 1);
 assert.equal(reservationConfirmation.notifications[0].area, 'Social');
 assert.ok(reservationConfirmation.notifications[0].to);
-assert.match(reservationConfirmation.notifications[0].text, /Nova solicitação de reserva/);
-assert.match(reservationConfirmation.notifications[0].text, /SEC Antares\n\n🏷️ Ambiente/);
-assert.match(reservationConfirmation.notifications[0].text, /Ambiente: Salão Principal/);
+assert.match(reservationConfirmation.notifications[0].text, /Nova solicitação de \*Reserva\*/);
+assert.match(reservationConfirmation.notifications[0].text, /Reserva\*\n\n🏷️ Ambiente/);
+assert.match(reservationConfirmation.notifications[0].text, /Ambiente: \*Salão Principal\*/);
 assert.match(reservationConfirmation.notifications[0].text, /Data: 30\/12\/2026 \(Quarta-feira\)/);
-assert.match(reservationConfirmation.notifications[0].text, /Nome: Maria da Silva/);
+assert.match(reservationConfirmation.notifications[0].text, /Nome: \*Maria da Silva\*/);
 assert.match(reservationConfirmation.notifications[0].text, /Horário: 19h/);
 assert.match(reservationConfirmation.notifications[0].text, /Contato do solicitante: \+55 47 99999-0000/);
 assert.match(reservationConfirmation.notifications[0].text, /Contato do solicitante: \+55 47 99999-0000\n\nEncaminhado/);
+
+await buildReply('1', clubWithoutSocialPhone, {
+  chatId: 'test-reservation-missing-social-phone',
+  memberPreflightDone: true,
+  member: { name: 'Maria da Silva' }
+});
+await buildReply('11', clubWithoutSocialPhone, {
+  chatId: 'test-reservation-missing-social-phone',
+  memberPreflightDone: true,
+  member: { name: 'Maria da Silva' }
+});
+await buildReply('30/12/2026', clubWithoutSocialPhone, {
+  chatId: 'test-reservation-missing-social-phone',
+  memberPreflightDone: true,
+  member: { name: 'Maria da Silva' }
+});
+await buildReply('sim', clubWithoutSocialPhone, {
+  chatId: 'test-reservation-missing-social-phone',
+  memberPreflightDone: true,
+  member: { name: 'Maria da Silva' }
+});
+const unavailableSocialForwarding = await buildReply('19h', clubWithoutSocialPhone, {
+  chatId: 'test-reservation-missing-social-phone',
+  memberPreflightDone: true,
+  member: { name: 'Maria da Silva' },
+  userPhone: '5547999990000',
+  userPhones: ['5547999990000']
+});
+assert.match(replyText(unavailableSocialForwarding), /Não foi possível encaminhar/);
+assert.equal(unavailableSocialForwarding.notifications, undefined);
 
 console.log('Fluxos essenciais conferidos.');

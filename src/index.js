@@ -6,7 +6,7 @@ import { settings, loadClub } from './config.js';
 import { logConversation } from './logger.js';
 import { acquireInstanceLock, shouldProcessMessage, shouldSendReply } from './messageGuard.js';
 import { buildPreflightReply, buildReply, buildWaitNotice } from './replies.js';
-import { compactWhitespace } from './text.js';
+import { compactWhitespace, uniqueValues } from './text.js';
 import { isGroupChat, isGroupChatId, isGroupMessage } from './groupPolicy.js';
 import { isInternalContactPhone, isInternalNotificationText } from './internalContacts.js';
 
@@ -335,7 +335,21 @@ async function handleRecoveredUnreadMessage(message) {
   }
 
   const body = compactWhitespace(message.body);
-  const userPhones = uniqueValues([message.from, message.chatId, message.chatTitle].flatMap(extractPhoneCandidates));
+  const rawCandidates = [message.from, message.chatId, message.chatTitle];
+
+  try {
+    const contact = await withTimeout(client.getContactById(message.from || message.chatId), contactLookupTimeoutMs);
+    const contactId = contact?.id?._serialized || '';
+    rawCandidates.push(
+      contact?.number,
+      !isLidChatId(contactId) ? contact?.id?.user : null,
+      contactId
+    );
+  } catch (error) {
+    console.warn(`Não foi possível ler detalhes do contato para validar o cadastro (nao lida): ${error.message}`);
+  }
+
+  const userPhones = uniqueValues(rawCandidates.flatMap(extractPhoneCandidates));
 
   if (shouldIgnoreInternalContactMessage(body, userPhones, message.from, message.chatId)) {
     console.log('Mensagem nao lida de contato interno ignorada.');
@@ -454,6 +468,18 @@ async function resolveFallbackSenderPhoneCandidates(message, chatId) {
     await readChatTitle(chatId)
   ];
 
+  try {
+    const contact = await withTimeout(message.getContact(), contactLookupTimeoutMs);
+    const contactId = contact?.id?._serialized || '';
+    rawCandidates.push(
+      contact?.number,
+      !isLidChatId(contactId) ? contact?.id?.user : null,
+      contactId
+    );
+  } catch (error) {
+    console.warn(`Não foi possível ler detalhes do contato para validar o cadastro (fallback): ${error.message}`);
+  }
+
   return uniqueValues(rawCandidates.flatMap(extractPhoneCandidates));
 }
 
@@ -500,10 +526,6 @@ function extractPhoneCandidates(value) {
   }
 
   return [digits];
-}
-
-function uniqueValues(values) {
-  return [...new Set(values.filter(Boolean))];
 }
 
 async function sendReply(chat, reply) {
@@ -559,7 +581,7 @@ async function sendReplyNotifications(reply) {
 }
 
 async function sendInternalNotification(notification) {
-  const chatId = notification?.chatId || phoneToPrivateChatId(notification?.to);
+  const chatId = notification?.chatId || (await resolveNotificationChatId(notification?.to));
 
   if (!chatId || !notification?.text) {
     return;
@@ -571,6 +593,28 @@ async function sendInternalNotification(notification) {
     const destination = notification.area || notification.to || chatId;
     console.error(`Falha ao encaminhar solicitação para ${destination}:`, formatErrorForLog(error));
   }
+}
+
+async function resolveNotificationChatId(phone) {
+  const digits = String(phone || '').replace(/\D/g, '');
+
+  if (!digits) {
+    return '';
+  }
+
+  try {
+    const numberId = await client.getNumberId(digits);
+
+    if (numberId?._serialized) {
+      return numberId._serialized;
+    }
+
+    console.warn(`Numero nao encontrado no WhatsApp para encaminhamento interno: ${phone}`);
+  } catch (error) {
+    console.warn(`Falha ao resolver numero do WhatsApp para encaminhamento interno (${phone}):`, formatErrorForLog(error));
+  }
+
+  return phoneToPrivateChatId(phone);
 }
 
 function phoneToPrivateChatId(phone) {

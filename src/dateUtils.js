@@ -109,7 +109,7 @@ export function addDays(date, days) {
   return datePartsFromUtc(result);
 }
 
-export function datePartsFromUtc(date) {
+function datePartsFromUtc(date) {
   return {
     year: date.getUTCFullYear(),
     month: date.getUTCMonth() + 1,

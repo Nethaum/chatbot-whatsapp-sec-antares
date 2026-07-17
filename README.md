@@ -128,7 +128,7 @@ COURT_SPREADSHEET_URL=
 
 Quando `PRICING_SPREADSHEET_URL` fica vazio, o bot procura a aba de preços dentro da própria planilha de eventos. Use essa variável apenas se a tabela de valores estiver em um arquivo separado.
 
-Os telefones operacionais dos setores devem ficar apenas no `.env` local. O arquivo `data/club.json` mantém somente a estrutura pública dos contatos.
+Os telefones operacionais dos setores devem ficar apenas no `.env` local. O arquivo `data/club.json` mantém somente a estrutura pública dos contatos. Os encaminhamentos automáticos dependem dessas variáveis locais, especialmente `TESOURARIA_PHONE`, `SOCIAL_PHONE` e `ESPORTES_PHONE`.
 
 ## Lista de sócios
 
@@ -196,7 +196,7 @@ O menu de mensalidade oferece três opções:
 - Consultar situação financeira.
 - Ver informações sobre vencimento, valores e dependentes.
 
-As solicitações de boleto e consulta de situação são encaminhadas automaticamente para a Tesouraria com o contato do solicitante.
+As solicitações de boleto e consulta de situação são encaminhadas automaticamente para a Tesouraria com o contato do solicitante. Quando o sócio não é identificado pelo telefone, o bot solicita o nome completo antes de enviar o pedido.
 
 ## Reservas
 

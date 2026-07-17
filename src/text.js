@@ -15,20 +15,6 @@ export function containsAny(text, words) {
   return words.some((word) => normalized.includes(normalizeText(word)));
 }
 
-export function numberedList(items) {
-  return items.map((item, index) => `${index + 1}. ${item}`).join('\n');
-}
-
-export function formatDatePtBr(dateValue) {
-  const date = new Date(`${dateValue}T12:00:00`);
-
-  if (Number.isNaN(date.getTime())) {
-    return dateValue;
-  }
-
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  }).format(date);
+export function uniqueValues(values) {
+  return [...new Set(values.filter(Boolean))];
 }

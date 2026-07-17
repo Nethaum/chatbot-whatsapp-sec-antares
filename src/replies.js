@@ -36,6 +36,7 @@ import {
 const reservationStates = new Map();
 const membershipStates = new Map();
 const feedbackStates = new Map();
+const duesStates = new Map();
 const navigationStates = new Map();
 const senderAccessStates = new Map();
 
@@ -96,7 +97,7 @@ export function buildWaitNotice(input, context = {}) {
     return '⏳ Só um instante, estou preparando o material de apresentação.';
   }
 
-  if (isDuesNotificationAction(text)) {
+  if (isDuesNotificationAction(text) && getSenderMember(chatId)?.name) {
     return '⏳ Só um instante, estou encaminhando sua solicitação para a Tesouraria.';
   }
 
@@ -165,6 +166,7 @@ export async function buildReply(input, club, context = {}) {
   const reservationState = reservationStates.get(chatId);
   const membershipState = membershipStates.get(chatId);
   const feedbackState = feedbackStates.get(chatId);
+  const duesState = duesStates.get(chatId);
 
   if (reservationState) {
     return handleActiveReservationState(input, text, reservationState, club, chatId, context);
@@ -176,6 +178,10 @@ export async function buildReply(input, club, context = {}) {
 
   if (feedbackState) {
     return handleActiveFeedbackState(input, text, feedbackState, club, chatId);
+  }
+
+  if (duesState) {
+    return handleActiveDuesState(input, text, duesState, club, chatId, context);
   }
 
   if (shouldShowMainMenu(text)) {
@@ -411,7 +417,97 @@ function handleDuesAction(action, club, chatId, context = {}) {
     return withParentShortcuts(duesInformation(club), 'dues');
   }
 
-  return withParentShortcuts(duesRequestReceived(action, club, context, getSenderMember(chatId)), 'dues');
+  const member = getSenderMember(chatId);
+
+  if (member?.name) {
+    return withParentShortcuts(duesRequestReceived(action, club, context, member), 'dues');
+  }
+
+  duesStates.set(chatId, { action });
+  return withParentShortcuts(duesNamePrompt(action), 'dues');
+}
+
+function handleActiveDuesState(input, text, state, club, chatId, context = {}) {
+  if (shouldShowContextMainMenu(text)) {
+    clearDuesState(chatId);
+    return resetToMainMenu(chatId, club);
+  }
+
+  if (shouldGoBack(text)) {
+    clearDuesState(chatId);
+    return navigateBack(chatId, club);
+  }
+
+  if (shouldCloseConversation(text)) {
+    clearDuesState(chatId);
+    return closeConversation(chatId, club);
+  }
+
+  if (isCancelCommand(text)) {
+    clearDuesState(chatId);
+    return withParentShortcuts(duesRequestPaused(state.action), 'dues');
+  }
+
+  if (reservationNumberMap[text]) {
+    clearDuesState(chatId);
+    return handleReservationSpaceSelection(reservationNumberMap[text], chatId, getSenderMember(chatId));
+  }
+
+  if (duesActionMap[text]) {
+    clearDuesState(chatId);
+    return handleDuesAction(duesActionMap[text], club, chatId, context);
+  }
+
+  const intentKey = findIntentKey(text);
+
+  if (intentKey === 'dues') {
+    clearDuesState(chatId);
+    return replyForIntent('dues', club, chatId);
+  }
+
+  if (intentKey) {
+    clearDuesState(chatId);
+    return replyForIntent(intentKey, club, chatId);
+  }
+
+  const name = extractReservationName(input);
+
+  if (!name) {
+    return withParentShortcuts(invalidDuesName(state.action), 'dues');
+  }
+
+  clearDuesState(chatId);
+  return withParentShortcuts(duesRequestReceived(state.action, club, context, { name }), 'dues');
+}
+
+function duesNamePrompt(action) {
+  return [
+    `${action.emoji} ${action.label}`,
+    '',
+    '👤 Não localizei seu cadastro pelo número de WhatsApp.',
+    '✍️ Informe o nome completo do sócio titular responsável por esta solicitação.'
+  ].join('\n');
+}
+
+function invalidDuesName(action) {
+  return [
+    `${action.emoji} ${action.label}`,
+    '',
+    '⚠️ Não entendi o nome informado.',
+    '✍️ Envie o nome completo do sócio titular responsável por esta solicitação.'
+  ].join('\n');
+}
+
+function duesRequestPaused(action) {
+  return [
+    `${action.emoji} ${action.label}`,
+    '',
+    '👍 Tudo bem. Nenhuma solicitação foi enviada.'
+  ].join('\n');
+}
+
+function clearDuesState(chatId) {
+  duesStates.delete(chatId);
 }
 
 function senderAccessAllowed(chatId) {
@@ -451,6 +547,7 @@ function clearAllStates(chatId) {
   clearReservationState(chatId);
   clearMembershipState(chatId);
   clearFeedbackState(chatId);
+  clearDuesState(chatId);
 }
 
 async function replyForIntent(intentKey, club, chatId) {
@@ -1441,6 +1538,12 @@ function askAnotherReservationDate(choice) {
 }
 
 function reservationRequestReceived(choice, details, selectedDate, club, context = {}) {
+  const notification = buildReservationNotification(choice, details, selectedDate, club, context);
+
+  if (!notification) {
+    return failedForwardingMessage(choice);
+  }
+
   const text = [
     `${choice.emoji} ${choice.name}`,
     '',
@@ -1451,16 +1554,20 @@ function reservationRequestReceived(choice, details, selectedDate, club, context
     '📞 Nossa equipe confirmará a reserva e retornará o contato em breve.'
   ].join('\n');
 
-  const notification = buildReservationNotification(choice, details, selectedDate, club, context);
-
-  if (!notification) {
-    return text;
-  }
-
   return {
     text,
     notifications: [notification]
   };
+}
+
+function failedForwardingMessage(choice) {
+  return [
+    `${choice.emoji} ${choice.name}`,
+    '',
+    '⚠️ Não foi possível encaminhar a solicitação automaticamente.',
+    '',
+    '📞 Tente novamente mais tarde ou procure a secretaria.'
+  ].join('\n');
 }
 
 function reservationConfirmationNotes(choice) {
@@ -1477,7 +1584,7 @@ function reservationConfirmationNotes(choice) {
 function buildReservationNotification(choice, details, selectedDate, club, context) {
   const contact = findContactByArea(club, choice.type === 'court' ? 'Esportes' : 'Social');
 
-  if (!contact) {
+  if (!hasUsablePhone(contact?.phone)) {
     return null;
   }
 
@@ -1490,11 +1597,11 @@ function buildReservationNotification(choice, details, selectedDate, club, conte
 
 function buildReservationNotificationText(choice, details, selectedDate, context) {
   return [
-    '📌 Nova solicitação de reserva - SEC Antares',
+    '📌 Nova solicitação de *Reserva*',
     '',
-    `🏷️ Ambiente: ${choice.name}`,
+    `🏷️ Ambiente: *${choice.name}*`,
     selectedDate ? `🗓️ Data: ${formatDateWithWeekday(selectedDate)}` : null,
-    details?.name ? `👤 Nome: ${details.name}` : null,
+    details?.name ? `👤 Nome: *${details.name}*` : null,
     details?.time ? `🕒 Horário: ${details.time}` : null,
     `📱 Contato do solicitante: ${formatRequesterContact(context)}`,
     '',
@@ -1523,7 +1630,7 @@ function extractDisplayPhoneDigits(value) {
 }
 
 function isDisplayPhone(value) {
-  return value.length >= 8 && value.length <= 16;
+  return value.length >= 10 && value.length <= 13;
 }
 
 function formatPhoneForDisplay(value) {
@@ -1855,6 +1962,18 @@ function duesInformation(club) {
 }
 
 function duesRequestReceived(action, club, context, member) {
+  const notification = buildDuesNotification(action, club, context, member);
+
+  if (!notification) {
+    return [
+      '💳 Mensalidade',
+      '',
+      '⚠️ Não foi possível encaminhar a solicitação automaticamente para a Tesouraria.',
+      '',
+      '📞 Tente novamente mais tarde ou procure a secretaria.'
+    ].join('\n');
+  }
+
   const text = [
     '💳 Mensalidade',
     '',
@@ -1863,12 +1982,6 @@ function duesRequestReceived(action, club, context, member) {
     `📌 Pedido: ${action.label}.`,
     '📞 A Tesouraria retornará o contato em breve.'
   ].join('\n');
-
-  const notification = buildDuesNotification(action, club, context, member);
-
-  if (!notification) {
-    return text;
-  }
 
   return {
     text,
@@ -1879,7 +1992,7 @@ function duesRequestReceived(action, club, context, member) {
 function buildDuesNotification(action, club, context, member) {
   const contact = findContactByArea(club, 'Tesouraria');
 
-  if (!contact) {
+  if (!hasUsablePhone(contact?.phone)) {
     return null;
   }
 
@@ -1892,16 +2005,27 @@ function buildDuesNotification(action, club, context, member) {
 
 function buildDuesNotificationText(action, context, member) {
   return [
-    '📌 Nova solicitação financeira - SEC Antares',
+    '📌 Nova solicitação para *Tesouraria*',
     '',
-    `${action.emoji} Pedido: ${action.label}`,
-    member?.name ? `👤 Nome: ${member.name}` : null,
+    `${action.emoji} Pedido: *${action.label}*`,
+    member?.name ? `👤 Nome: *${member.name}*` : null,
     `📱 Contato do solicitante: ${formatRequesterContact(context)}`,
     '',
     'Encaminhado automaticamente pelo atendimento da SEC Antares.'
   ]
     .filter((line) => line !== null && line !== undefined)
     .join('\n');
+}
+
+function hasUsablePhone(value) {
+  const digits = String(value || '').replace(/\D/g, '');
+
+  if (!digits || /^0+$/.test(digits)) {
+    return false;
+  }
+
+  const nationalDigits = digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits;
+  return nationalDigits.length === 10 || nationalDigits.length === 11;
 }
 
 function formatDuesValue(item) {
