@@ -9,6 +9,7 @@ import { buildPreflightReply, buildReply, buildWaitNotice } from './replies.js';
 import { compactWhitespace, uniqueValues } from './text.js';
 import { isGroupChat, isGroupChatId, isGroupMessage } from './groupPolicy.js';
 import { isInternalContactPhone, isInternalNotificationText } from './internalContacts.js';
+import { extractPhoneCandidates } from './phoneCandidates.js';
 
 const { Client, LocalAuth, MessageMedia } = pkg;
 const club = loadClub();
@@ -509,23 +510,6 @@ function withTimeout(promise, timeoutMs) {
       setTimeout(() => reject(new Error(`tempo limite de ${timeoutMs}ms excedido`)), timeoutMs);
     })
   ]);
-}
-
-function extractPhoneCandidates(value) {
-  const text = String(value || '').trim();
-
-  if (!text || /@lid\b/i.test(text)) {
-    return [];
-  }
-
-  const beforeAt = text.replace(/@.+$/, '');
-  const digits = beforeAt.replace(/\D/g, '');
-
-  if (digits.length < 8 || digits.length > 16) {
-    return [];
-  }
-
-  return [digits];
 }
 
 async function sendReply(chat, reply) {

@@ -265,6 +265,7 @@ Esse comando executa:
 - `check:syntax`
 - `check:flows`
 - `check:dates`
+- `check:phones`
 - `check:members`
 - `check:guard`
 - `check:groups`
