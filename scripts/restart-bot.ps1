@@ -8,6 +8,7 @@ $logPath = Join-Path $stateDir 'manual-start.log'
 Write-Host ''
 Write-Host 'Iniciando bot...'
 New-Item -ItemType Directory -Force -Path $stateDir | Out-Null
+Set-Content -LiteralPath $logPath -Encoding utf8 -Value "Inicio do bot: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
 
 $powerShell = (Get-Command pwsh -ErrorAction SilentlyContinue).Source
 
