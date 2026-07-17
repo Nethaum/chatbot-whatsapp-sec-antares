@@ -259,9 +259,9 @@ assert.ok(reservationConfirmation.notifications[0].to);
 assert.match(reservationConfirmation.notifications[0].text, /Nova solicitação de \*Reserva\*/);
 assert.match(reservationConfirmation.notifications[0].text, /Reserva\*\n\n🏷️ Ambiente/);
 assert.match(reservationConfirmation.notifications[0].text, /Ambiente: \*Salão Principal\*/);
-assert.match(reservationConfirmation.notifications[0].text, /Data: 30\/12\/2026 \(Quarta-feira\)/);
+assert.match(reservationConfirmation.notifications[0].text, /Data: \*30\/12\/2026 \(Quarta-feira\)\*/);
 assert.match(reservationConfirmation.notifications[0].text, /Nome: \*Maria da Silva\*/);
-assert.match(reservationConfirmation.notifications[0].text, /Horário: 19h/);
+assert.match(reservationConfirmation.notifications[0].text, /Horário: \*19h\*/);
 assert.match(reservationConfirmation.notifications[0].text, /Contato do solicitante: \+55 47 99999-0000/);
 assert.match(reservationConfirmation.notifications[0].text, /Contato do solicitante: \+55 47 99999-0000\n\nEncaminhado/);
 

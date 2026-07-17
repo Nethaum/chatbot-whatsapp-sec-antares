@@ -1600,9 +1600,9 @@ function buildReservationNotificationText(choice, details, selectedDate, context
     '📌 Nova solicitação de *Reserva*',
     '',
     `🏷️ Ambiente: *${choice.name}*`,
-    selectedDate ? `🗓️ Data: ${formatDateWithWeekday(selectedDate)}` : null,
+    selectedDate ? `🗓️ Data: *${formatDateWithWeekday(selectedDate)}*` : null,
     details?.name ? `👤 Nome: *${details.name}*` : null,
-    details?.time ? `🕒 Horário: ${details.time}` : null,
+    details?.time ? `🕒 Horário: *${details.time}*` : null,
     `📱 Contato do solicitante: ${formatRequesterContact(context)}`,
     '',
     'Encaminhado automaticamente pelo atendimento da SEC Antares.'
