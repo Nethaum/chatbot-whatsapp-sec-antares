@@ -6,9 +6,18 @@ $indexPath = Join-Path $root 'src\index.js'
 $pidsToStop = New-Object 'System.Collections.Generic.HashSet[int]'
 
 if (Test-Path -LiteralPath $lockPath) {
-  $lock = Get-Content -LiteralPath $lockPath -Raw | ConvertFrom-Json
-  if ($lock.pid) {
-    [void]$pidsToStop.Add([int]$lock.pid)
+  $lockContent = Get-Content -LiteralPath $lockPath -Raw
+
+  if (-not [string]::IsNullOrWhiteSpace($lockContent)) {
+    try {
+      $lock = $lockContent | ConvertFrom-Json
+
+      if ($lock.pid) {
+        [void]$pidsToStop.Add([int]$lock.pid)
+      }
+    } catch {
+      Write-Host 'Arquivo de lock inválido. O processo será localizado pela linha de comando.'
+    }
   }
 }
 
