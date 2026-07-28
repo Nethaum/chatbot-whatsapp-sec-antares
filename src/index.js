@@ -5,7 +5,7 @@ import path from 'node:path';
 import { settings, loadClub } from './config.js';
 import { logConversation } from './logger.js';
 import { acquireInstanceLock, shouldProcessMessage, shouldSendReply } from './messageGuard.js';
-import { buildPreflightReply, buildReply, buildWaitNotice } from './replies.js';
+import { buildPaymentReceiptForwarding, buildPreflightReply, buildReply, buildWaitNotice, isPaymentReceiptText } from './replies.js';
 import { compactWhitespace, uniqueValues } from './text.js';
 import { isGroupChat, isGroupChatId, isGroupMessage } from './groupPolicy.js';
 import { isInternalContactPhone, isInternalNotificationText } from './internalContacts.js';
@@ -19,6 +19,9 @@ const unreadScanInitialDelayMs = 3000;
 const unreadScanRetryDelayMs = 5000;
 const maxUnreadScanAttempts = 3;
 const contactLookupTimeoutMs = 1200;
+const pendingReceiptMediaTtlMs = 10 * 60 * 1000;
+const pendingReceiptMedia = new Map();
+const receiptMediaMessageTypes = new Set(['image', 'document']);
 let startupErrorHandled = false;
 let client;
 let reconnectTimer;
@@ -162,6 +165,18 @@ async function handleMessage(message) {
       return;
     }
 
+    const receiptHandling = await handlePotentialPaymentReceipt(message, body, chat, chatId, userPhones);
+
+    if (receiptHandling) {
+      logConversation({
+        from: message.from,
+        isGroup,
+        body: body || '[arquivo]',
+        reply: receiptHandling.logReply
+      });
+      return;
+    }
+
     await answerIncomingMessage({
       body,
       chat,
@@ -180,6 +195,95 @@ async function handleMessage(message) {
 
     console.error('Erro ao responder mensagem:', error);
   }
+}
+
+async function handlePotentialPaymentReceipt(message, body, chat, chatId, userPhones) {
+  if (message.hasMedia && receiptMediaMessageTypes.has(message.type)) {
+    return handleIncomingReceiptMedia(message, body, chat, chatId, userPhones);
+  }
+
+  if (!message.hasMedia && isPaymentReceiptText(body)) {
+    return handlePendingReceiptText(chat, chatId, userPhones);
+  }
+
+  return false;
+}
+
+async function handleIncomingReceiptMedia(message, body, chat, chatId, userPhones) {
+  let media;
+
+  try {
+    media = await message.downloadMedia();
+  } catch (error) {
+    console.warn('Não foi possível baixar o arquivo recebido:', error?.message || error);
+    return false;
+  }
+
+  if (!media) {
+    return false;
+  }
+
+  if (isPaymentReceiptText(body)) {
+    const forwarded = await forwardReceiptAndReply(chat, chatId, userPhones, media);
+    return paymentReceiptHandlingResult(forwarded);
+  }
+
+  pendingReceiptMedia.set(chatId, { media, receivedAt: Date.now() });
+  return {
+    logReply: '[arquivo recebido aguardando contexto de pagamento]'
+  };
+}
+
+async function handlePendingReceiptText(chat, chatId, userPhones) {
+  const pending = pendingReceiptMedia.get(chatId);
+  pendingReceiptMedia.delete(chatId);
+
+  if (!pending || Date.now() - pending.receivedAt > pendingReceiptMediaTtlMs) {
+    return false;
+  }
+
+  const forwarded = await forwardReceiptAndReply(chat, chatId, userPhones, pending.media);
+  return paymentReceiptHandlingResult(forwarded);
+}
+
+function paymentReceiptHandlingResult(forwarded) {
+  return {
+    logReply: forwarded
+      ? '[comprovante encaminhado para a Tesouraria]'
+      : '[falha ao encaminhar comprovante para a Tesouraria]'
+  };
+}
+
+async function forwardReceiptAndReply(chat, chatId, userPhones, media) {
+  const { notification, successText, failureText } = await buildPaymentReceiptForwarding(club, {
+    chatId,
+    userPhone: userPhones[0] || '',
+    userPhones
+  });
+
+  if (notification) {
+    try {
+      const tesourariaChatId = await resolveNotificationChatId(notification.to);
+
+      if (tesourariaChatId) {
+        await sendMessageSafely(
+          createChatAdapter(tesourariaChatId, false),
+          media,
+          { caption: notification.text },
+          'comprovante de pagamento'
+        );
+        await sendReply(chat, successText);
+        return true;
+      }
+
+      console.warn(`Numero nao encontrado no WhatsApp para encaminhamento de comprovante: ${notification.to}`);
+    } catch (error) {
+      console.error(`Falha ao encaminhar comprovante para ${notification.area}:`, formatErrorForLog(error));
+    }
+  }
+
+  await sendReply(chat, failureText);
+  return false;
 }
 
 async function resolveIncomingMessageContext(message) {

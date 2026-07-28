@@ -27,7 +27,9 @@ import {
   menuNumberMap,
   negativeConfirmationTriggers,
   parentMenuShortcutLabels,
+  paymentReceiptKeywords,
   pauseRequestTriggers,
+  reservationDateChangeTriggers,
   reservationNumberMap,
   reservationSubmenuTriggers,
   screenParents
@@ -208,6 +210,13 @@ export async function buildReply(input, club, context = {}) {
     return handleReservationSpaceSelection(reservationNumberMap[text], chatId, getSenderMember(chatId));
   }
 
+  if (isDateChangeRequest(text)) {
+    clearMembershipState(chatId);
+    clearFeedbackState(chatId);
+    clearDuesState(chatId);
+    return startDateChangeFlow(chatId, club);
+  }
+
   const intentKey = findIntentKey(text);
 
   return replyForIntent(intentKey, club, chatId);
@@ -267,6 +276,10 @@ async function handleActiveReservationState(input, text, state, club, chatId, co
     return handleReservationDetailsInput(input, state, club, chatId, context);
   }
 
+  if (state.step === 'awaiting_date_change_space') {
+    return handleDateChangeSpaceSelection(text, chatId);
+  }
+
   if (state.step === 'awaiting_court_date') {
     return handleCourtDateInput(input, state, chatId);
   }
@@ -292,6 +305,11 @@ async function handleActiveReservationState(input, text, state, club, chatId, co
   if (reservationNumberMap[text]) {
     clearFeedbackState(chatId);
     return handleReservationSpaceSelection(reservationNumberMap[text], chatId, getSenderMember(chatId));
+  }
+
+  if (isDateChangeRequest(text)) {
+    clearFeedbackState(chatId);
+    return startDateChangeFlow(chatId, club);
   }
 
   const intentKey = findIntentKey(text);
@@ -640,6 +658,10 @@ function shouldOpenReservationsSubmenu(text) {
   return isOneOf(text, reservationSubmenuTriggers);
 }
 
+function isDateChangeRequest(text) {
+  return isOneOf(text, reservationDateChangeTriggers);
+}
+
 function shouldGoBack(text) {
   return isOneOf(text, backTriggers);
 }
@@ -725,6 +747,7 @@ function withNavigationShortcuts(reply, submenuKey, options = {}) {
 
   if (options.showBack && parentMenuShortcutLabels[submenuKey]) {
     shortcuts.push(parentMenuShortcutLabels[submenuKey]);
+    shortcuts.push('🔙 Voltar (V)');
   }
 
   if (reply && typeof reply === 'object') {
@@ -741,16 +764,19 @@ function withParentShortcuts(reply, submenuKey) {
   return withNavigationShortcuts(reply, submenuKey, { showBack: true });
 }
 
-async function handleReservationSpaceSelection(choice, chatId, member = null) {
+async function handleReservationSpaceSelection(choice, chatId, member = null, options = {}) {
+  const isDateChange = Boolean(options.isDateChange);
+
   if (choice.type === 'court') {
     setNavigationScreen(chatId, 'reservationDate');
     reservationStates.set(chatId, {
       step: 'awaiting_court_date',
       choice,
+      isDateChange,
       details: prefillReservationDetails(member)
     });
 
-    return withParentShortcuts(askCourtDate(choice), 'reservations');
+    return withParentShortcuts(askCourtDate(choice, isDateChange), 'reservations');
   }
 
   if (!choice.requiresDate) {
@@ -762,11 +788,45 @@ async function handleReservationSpaceSelection(choice, chatId, member = null) {
   reservationStates.set(chatId, {
     step: 'awaiting_date',
     choice,
+    isDateChange,
     details: prefillReservationDetails(member)
   });
 
   const pricingText = await buildReservationPricingText(choice.name);
-  return withParentShortcuts(askReservationDate(choice, pricingText), 'reservations');
+  return withParentShortcuts(askReservationDate(choice, pricingText, isDateChange), 'reservations');
+}
+
+function startDateChangeFlow(chatId, club) {
+  setNavigationScreen(chatId, 'reservationSpace');
+  reservationStates.set(chatId, { step: 'awaiting_date_change_space' });
+  return withParentShortcuts(dateChangeSpacePrompt(club), 'reservations');
+}
+
+function handleDateChangeSpaceSelection(text, chatId) {
+  if (reservationNumberMap[text]) {
+    return handleReservationSpaceSelection(reservationNumberMap[text], chatId, getSenderMember(chatId), { isDateChange: true });
+  }
+
+  return withParentShortcuts(invalidDateChangeSpace(), 'reservations');
+}
+
+function dateChangeSpacePrompt(club) {
+  return [
+    '🔄 Troca de data de uma reserva já confirmada',
+    '',
+    '❓ Qual ambiente é a sua reserva atual?',
+    '',
+    ...reservationSpacesList(club)
+  ].join('\n');
+}
+
+function invalidDateChangeSpace() {
+  return [
+    '🔄 Troca de data de uma reserva já confirmada',
+    '',
+    '❌ Não reconheci essa opção.',
+    '❓ Informe o número do ambiente da sua reserva atual.'
+  ].join('\n');
 }
 
 async function handleCourtDateInput(input, state, chatId) {
@@ -789,6 +849,7 @@ async function handleCourtDateInput(input, state, chatId) {
           reservationStates.set(chatId, {
             step: 'awaiting_court_date_confirmation',
             choice,
+            isDateChange: state.isDateChange,
             selectedDate: availability.requestedDate,
             details: state.details || {},
             availability
@@ -796,7 +857,7 @@ async function handleCourtDateInput(input, state, chatId) {
           setNavigationScreen(chatId, 'reservationSpace');
         }
 
-        return withParentShortcuts(courtAvailability(choice, availability), 'reservations');
+        return withParentShortcuts(courtAvailability(choice, availability, state.isDateChange), 'reservations');
       default:
         return null;
     }
@@ -832,11 +893,12 @@ async function handleReservationDateInput(input, state, chatId) {
         reservationStates.set(chatId, {
           step: 'awaiting_date_confirmation',
           choice,
+          isDateChange: state.isDateChange,
           selectedDate: availability.requestedDate,
           details: state.details || {}
         });
         setNavigationScreen(chatId, 'reservationSpace');
-        return withParentShortcuts(confirmReservationDate(choice, availability.requestedDate), 'reservations');
+        return withParentShortcuts(confirmReservationDate(choice, availability.requestedDate, state.isDateChange), 'reservations');
       case 'unavailable':
         setNavigationScreen(chatId, 'reservationDate');
         return withParentShortcuts(unavailableReservationDate(choice, availability), 'reservations');
@@ -863,11 +925,12 @@ async function handleReservationDateConfirmation(input, text, state, club, chatI
     reservationStates.set(chatId, {
       step: 'awaiting_reservation_details',
       choice: state.choice,
+      isDateChange: state.isDateChange,
       selectedDate: state.selectedDate,
       details: state.details || {}
     });
     setNavigationScreen(chatId, 'reservationSpace');
-    return withParentShortcuts(availableReservationDate(state.choice, state.selectedDate, state.details || {}), 'reservations');
+    return withParentShortcuts(availableReservationDate(state.choice, state.selectedDate, state.details || {}, state.isDateChange), 'reservations');
   }
 
   if (isNegativeConfirmation(text)) {
@@ -879,13 +942,14 @@ async function handleReservationDateConfirmation(input, text, state, club, chatI
     reservationStates.set(chatId, {
       step: 'awaiting_date',
       choice: state.choice,
+      isDateChange: state.isDateChange,
       details: state.details || {}
     });
     setNavigationScreen(chatId, 'reservationDate');
-    return withParentShortcuts(askAnotherReservationDate(state.choice), 'reservations');
+    return withParentShortcuts(askAnotherReservationDate(state.choice, state.isDateChange), 'reservations');
   }
 
-  return handleReservationDateInput(input, { choice: state.choice, details: state.details || {} }, chatId);
+  return handleReservationDateInput(input, { choice: state.choice, isDateChange: state.isDateChange, details: state.details || {} }, chatId);
 }
 
 async function handleCourtDateConfirmation(input, text, state, club, chatId) {
@@ -893,11 +957,12 @@ async function handleCourtDateConfirmation(input, text, state, club, chatId) {
     reservationStates.set(chatId, {
       step: 'awaiting_reservation_details',
       choice: state.choice,
+      isDateChange: state.isDateChange,
       selectedDate: state.selectedDate,
       details: state.details || {}
     });
     setNavigationScreen(chatId, 'reservationSpace');
-    return withParentShortcuts(courtReservationDetailsPrompt(state.choice, state.selectedDate, state.details || {}), 'reservations');
+    return withParentShortcuts(courtReservationDetailsPrompt(state.choice, state.selectedDate, state.details || {}, state.isDateChange), 'reservations');
   }
 
   if (isNegativeConfirmation(text)) {
@@ -909,13 +974,14 @@ async function handleCourtDateConfirmation(input, text, state, club, chatId) {
     reservationStates.set(chatId, {
       step: 'awaiting_court_date',
       choice: state.choice,
+      isDateChange: state.isDateChange,
       details: state.details || {}
     });
     setNavigationScreen(chatId, 'reservationDate');
-    return withParentShortcuts(askAnotherReservationDate(state.choice), 'reservations');
+    return withParentShortcuts(askAnotherReservationDate(state.choice, state.isDateChange), 'reservations');
   }
 
-  return handleCourtDateInput(input, { choice: state.choice, details: state.details || {} }, chatId);
+  return handleCourtDateInput(input, { choice: state.choice, isDateChange: state.isDateChange, details: state.details || {} }, chatId);
 }
 
 function isDateConfirmation(text) {
@@ -949,7 +1015,7 @@ function handleReservationDetailsInput(input, state, club, chatId, context = {})
   }
 
   if (isAcknowledgement(text)) {
-    return withParentShortcuts(reservationDetailsReminder(choice, state.details || {}, state.selectedDate), 'reservations');
+    return withParentShortcuts(reservationDetailsReminder(choice, state.details || {}, state.selectedDate, state.isDateChange), 'reservations');
   }
 
   const incomingDetails = parseReservationDetails(input);
@@ -960,7 +1026,7 @@ function handleReservationDetailsInput(input, state, club, chatId, context = {})
 
   if (details.name && details.time) {
     clearReservationState(chatId);
-    return withParentShortcuts(reservationRequestReceived(choice, details, state.selectedDate, club, context), 'reservations');
+    return withParentShortcuts(reservationRequestReceived(choice, details, state.selectedDate, club, context, state.isDateChange), 'reservations');
   }
 
   reservationStates.set(chatId, {
@@ -969,11 +1035,11 @@ function handleReservationDetailsInput(input, state, club, chatId, context = {})
   });
 
   if (details.time && !details.name) {
-    return withParentShortcuts(missingReservationName(choice, details, state.selectedDate), 'reservations');
+    return withParentShortcuts(missingReservationName(choice, details, state.selectedDate, state.isDateChange), 'reservations');
   }
 
   if (details.name && !details.time) {
-    return withParentShortcuts(missingReservationTime(choice, details, state.selectedDate), 'reservations');
+    return withParentShortcuts(missingReservationTime(choice, details, state.selectedDate, state.isDateChange), 'reservations');
   }
 
   return withParentShortcuts(invalidReservationDetails(choice), 'reservations');
@@ -983,7 +1049,7 @@ function cancelReservationFlow(state, chatId) {
   clearReservationState(chatId);
 
   if (!state.choice) {
-    return null;
+    return withParentShortcuts('👍 Tudo bem. Nenhuma solicitação foi enviada.', 'reservations');
   }
 
   return withParentShortcuts(reservationRequestPaused(state.choice), 'reservations');
@@ -1345,31 +1411,33 @@ function feedbackReminder() {
   ].join('\n');
 }
 
-function askReservationDate(choice, pricingText) {
+function askReservationDate(choice, pricingText, isDateChange = false) {
   return [
     `${choice.emoji} ${choice.name}`,
     '',
     pricingText,
     '',
-    '📅 Informe a data desejada.'
+    isDateChange ? '📅 Informe a *nova data desejada*.' : '📅 Informe a *data desejada*.'
   ]
     .filter((line) => line !== undefined && line !== null)
     .join('\n');
 }
 
-function askCourtDate(choice) {
+function askCourtDate(choice, isDateChange = false) {
   return [
     `${choice.emoji} ${choice.name}`,
     '',
-    '📅 Informe a data desejada para consultar os horários disponíveis.'
+    isDateChange
+      ? '📅 Informe a *nova data desejada* para consultar os horários disponíveis.'
+      : '📅 Informe a *data desejada* para consultar os horários disponíveis.'
   ].join('\n');
 }
 
-function courtAvailability(choice, availability) {
+function courtAvailability(choice, availability, isDateChange = false) {
   const lines = [
     `${choice.emoji} ${choice.name}`,
     '',
-    `🔎 Data identificada: ${formatBoldDateWithWeekday(availability.requestedDate)}`
+    `🔎 ${isDateChange ? 'Nova data identificada' : 'Data identificada'}: ${formatBoldDateWithWeekday(availability.requestedDate)}`
   ];
 
   if (availability.displayMode === 'unavailable_only') {
@@ -1402,7 +1470,7 @@ function courtAvailability(choice, availability) {
       '',
       '❌ Não encontrei horários disponíveis para essa data.',
       '',
-      '📅 Informe outra data desejada.'
+      isDateChange ? '📅 Informe *outra nova data desejada*.' : '📅 Informe *outra data desejada*.'
     );
   }
 
@@ -1430,7 +1498,7 @@ function confirmDateInstructions() {
     '❓ Deseja seguir com essa data?',
     '',
     '✅ Responda *sim* para continuar.',
-    '📅 Informe outra data para consultar.',
+    '📅 Informe *outra data* para consultar.',
     '❌ Responda *não* para voltar ao menu anterior.'
   ];
 }
@@ -1452,42 +1520,42 @@ function pastReservationDate(choice) {
   return [
     `${choice.emoji} ${choice.name}.`,
     '',
-    '📅 Informe uma data futura para consultar a disponibilidade.',
+    '📅 Informe uma *data futura* para consultar a disponibilidade.',
     `💡 Exemplo: 25/12, 25 julho ou ${dateExampleWithNextYear()}`
   ].join('\n');
 }
 
-function confirmReservationDate(choice, selectedDate) {
+function confirmReservationDate(choice, selectedDate, isDateChange = false) {
   return [
     `${choice.emoji} ${choice.name}`,
     '',
-    `🔎 Data identificada: ${formatBoldDateWithWeekday(selectedDate)}`,
+    `🔎 ${isDateChange ? 'Nova data identificada' : 'Data identificada'}: ${formatBoldDateWithWeekday(selectedDate)}`,
     '',
     ...confirmDateInstructions()
   ].join('\n');
 }
 
-function availableReservationDate(choice, selectedDate, details = {}) {
+function availableReservationDate(choice, selectedDate, details = {}, isDateChange = false) {
   return reservationDetailsPrompt(choice, selectedDate, details, [
     '• 👤 Nome completo do responsável pela solicitação',
     '• 🕒 Horário de início do evento'
-  ]);
+  ], isDateChange);
 }
 
-function courtReservationDetailsPrompt(choice, selectedDate, details = {}) {
+function courtReservationDetailsPrompt(choice, selectedDate, details = {}, isDateChange = false) {
   return reservationDetailsPrompt(choice, selectedDate, details, [
     '• 👤 Nome completo do responsável pela solicitação',
     '• 🕒 Horário desejado'
-  ]);
+  ], isDateChange);
 }
 
-function reservationDetailsPrompt(choice, selectedDate, details, requiredFields) {
+function reservationDetailsPrompt(choice, selectedDate, details, requiredFields, isDateChange = false) {
   const knownDetails = knownReservationDetailLines(details);
   const missingFields = missingReservationDetailFields(details, requiredFields);
   const lines = [
     `${choice.emoji} ${choice.name}`,
     '',
-    `✅ Data confirmada: ${formatBoldDateWithWeekday(selectedDate)}`
+    `✅ ${isDateChange ? 'Nova data selecionada' : 'Data selecionada'}: ${formatBoldDateWithWeekday(selectedDate)}`
   ];
 
   if (knownDetails.length) {
@@ -1529,16 +1597,16 @@ function missingReservationDetailFields(details = {}, requiredFields) {
   });
 }
 
-function askAnotherReservationDate(choice) {
+function askAnotherReservationDate(choice, isDateChange = false) {
   return [
     `${choice.emoji} ${choice.name}`,
     '',
-    '📅 Sem problema. Informe outra data desejada.'
+    isDateChange ? '📅 Sem problema. Informe a *nova data desejada*.' : '📅 Sem problema. Informe *outra data desejada*.'
   ].join('\n');
 }
 
-function reservationRequestReceived(choice, details, selectedDate, club, context = {}) {
-  const notification = buildReservationNotification(choice, details, selectedDate, club, context);
+function reservationRequestReceived(choice, details, selectedDate, club, context = {}, isDateChange = false) {
+  const notification = buildReservationNotification(choice, details, selectedDate, club, context, isDateChange);
 
   if (!notification) {
     return failedForwardingMessage(choice);
@@ -1547,8 +1615,8 @@ function reservationRequestReceived(choice, details, selectedDate, club, context
   const text = [
     `${choice.emoji} ${choice.name}`,
     '',
-    '✅ Solicitação recebida.',
-    ...formatKnownReservationDetails(details, selectedDate),
+    isDateChange ? '✅ Solicitação de troca de data recebida.' : '✅ Solicitação recebida.',
+    ...formatKnownReservationDetails(details, selectedDate, isDateChange),
     ...reservationConfirmationNotes(choice),
     '',
     '📞 Nossa equipe confirmará a reserva e retornará o contato em breve.'
@@ -1581,7 +1649,7 @@ function reservationConfirmationNotes(choice) {
   ];
 }
 
-function buildReservationNotification(choice, details, selectedDate, club, context) {
+function buildReservationNotification(choice, details, selectedDate, club, context, isDateChange = false) {
   const contact = findContactByArea(club, choice.type === 'court' ? 'Esportes' : 'Social');
 
   if (!hasUsablePhone(contact?.phone)) {
@@ -1591,21 +1659,23 @@ function buildReservationNotification(choice, details, selectedDate, club, conte
   return {
     to: contact.phone,
     area: contact.area,
-    text: buildReservationNotificationText(choice, details, selectedDate, context)
+    text: buildReservationNotificationText(choice, details, selectedDate, context, isDateChange)
   };
 }
 
-function buildReservationNotificationText(choice, details, selectedDate, context) {
+function buildReservationNotificationText(choice, details, selectedDate, context, isDateChange = false) {
   return [
-    '📌 Nova solicitação de *Reserva*',
+    isDateChange ? '📌 Solicitação de *Troca de Data*' : '📌 Nova solicitação de *Reserva*',
     '',
     `🏷️ Ambiente: *${choice.name}*`,
-    selectedDate ? `🗓️ Data: *${formatDateWithWeekday(selectedDate)}*` : null,
+    selectedDate ? `🗓️ ${isDateChange ? 'Nova data solicitada' : 'Data'}: *${formatDateWithWeekday(selectedDate)}*` : null,
     details?.name ? `👤 Nome: *${details.name}*` : null,
     details?.time ? `🕒 Horário: *${details.time}*` : null,
     `📱 Contato do solicitante: ${formatRequesterContact(context)}`,
     '',
-    'Encaminhado automaticamente pelo atendimento da SEC Antares.'
+    isDateChange
+      ? 'Encaminhado automaticamente pelo atendimento da SEC Antares. Verifique a reserva existente antes de confirmar a nova data.'
+      : 'Encaminhado automaticamente pelo atendimento da SEC Antares.'
   ]
     .filter((line) => line !== null && line !== undefined)
     .join('\n');
@@ -1668,16 +1738,16 @@ function reservationRequestPaused(choice) {
   ].join('\n');
 }
 
-function reservationDetailsReminder(choice, details, selectedDate) {
+function reservationDetailsReminder(choice, details, selectedDate, isDateChange = false) {
   if (details.time && !details.name) {
-    return missingReservationName(choice, details, selectedDate);
+    return missingReservationName(choice, details, selectedDate, isDateChange);
   }
 
   if (details.name && !details.time) {
-    return missingReservationTime(choice, details, selectedDate);
+    return missingReservationTime(choice, details, selectedDate, isDateChange);
   }
 
-  return availableReservationDate(choice, selectedDate, details);
+  return availableReservationDate(choice, selectedDate, details, isDateChange);
 }
 
 function parseReservationDetails(value) {
@@ -1778,35 +1848,35 @@ const reservationDetailStopWords = new Set([
   'minutos'
 ]);
 
-function missingReservationName(choice, details, selectedDate) {
+function missingReservationName(choice, details, selectedDate, isDateChange = false) {
   return [
     `${choice.emoji} ${choice.name}`,
     '',
     '✅ Horário recebido.',
-    ...formatKnownReservationDetails(details, selectedDate),
+    ...formatKnownReservationDetails(details, selectedDate, isDateChange),
     '',
     `👤 Agora envie ${reservationNameInstruction(choice)}.`,
     '💡 Exemplo: João da Silva'
   ].join('\n');
 }
 
-function missingReservationTime(choice, details, selectedDate) {
+function missingReservationTime(choice, details, selectedDate, isDateChange = false) {
   return [
     `${choice.emoji} ${choice.name}`,
     '',
     '✅ Nome recebido.',
-    ...formatKnownReservationDetails(details, selectedDate),
+    ...formatKnownReservationDetails(details, selectedDate, isDateChange),
     '',
     `🕒 Agora envie ${choice.type === 'court' ? 'o horário desejado.' : 'o horário de início do evento.'}`,
     '💡 Exemplo: 19 ou 19h'
   ].join('\n');
 }
 
-function formatKnownReservationDetails(details = {}, selectedDate) {
+function formatKnownReservationDetails(details = {}, selectedDate, isDateChange = false) {
   const lines = [];
 
   if (selectedDate) {
-    lines.push(`• 🗓️ Data: ${formatBoldDateWithWeekday(selectedDate)}`);
+    lines.push(`• 🗓️ ${isDateChange ? 'Nova data' : 'Data'}: ${formatBoldDateWithWeekday(selectedDate)}`);
   }
 
   if (details.name) {
@@ -1848,7 +1918,7 @@ function unavailableReservationDate(choice, availability) {
     lines.push('', '✨ Sugestões disponíveis no mesmo dia da semana:', ...suggestions);
   }
 
-  lines.push('', '📅 Informe a data desejada.');
+  lines.push('', '📅 Informe a *data desejada*.');
 
   return lines.join('\n');
 }
@@ -1875,8 +1945,19 @@ function setNavigationScreen(chatId, screen) {
 }
 
 function reservations(club) {
+  return [
+    '❓ Escolha o ambiente que deseja reservar:',
+    '',
+    ...reservationSpacesList(club),
+    '',
+    '1️⃣5️⃣ Já tenho reserva e quero trocar a data 🔄'
+  ].join('\n');
+}
+
+function reservationSpacesList(club) {
   const reservationInfo = club.reservations || {};
-  const spaces = reservationInfo.spaces?.length
+
+  return reservationInfo.spaces?.length
     ? reservationInfo.spaces.map(formatReservationSpace)
     : [
         '1️⃣1️⃣ Salão Principal (400 pessoas) 🏛️',
@@ -1884,8 +1965,6 @@ function reservations(club) {
         '1️⃣3️⃣ Churrasqueira (80 pessoas) 🔥 (inclui Playground 🛝 e Cancha de Bocha 🎳)',
         '1️⃣4️⃣ Quadra de Areia 🏐'
       ];
-
-  return ['❓ Escolha o ambiente que deseja reservar:', '', ...spaces].join('\n');
 }
 
 function selectedReservationSpace(choice) {
@@ -2015,6 +2094,70 @@ function buildDuesNotificationText(action, context, member) {
   ]
     .filter((line) => line !== null && line !== undefined)
     .join('\n');
+}
+
+export function isPaymentReceiptText(text) {
+  return containsAny(text, paymentReceiptKeywords);
+}
+
+export async function buildPaymentReceiptForwarding(club, context = {}) {
+  const userPhones = contextUserPhones(context);
+  let member = null;
+
+  if (userPhones.length) {
+    const result = await findMemberByPhone(userPhones);
+
+    if (result.status === 'found') {
+      member = result.member;
+    }
+  }
+
+  const contact = findContactByArea(club, 'Tesouraria');
+  const notification = hasUsablePhone(contact?.phone)
+    ? {
+        to: contact.phone,
+        area: contact.area,
+        text: buildPaymentReceiptNotificationText(context, member)
+      }
+    : null;
+
+  return {
+    notification,
+    successText: receiptForwardedMessage(member),
+    failureText: failedReceiptForwardingMessage()
+  };
+}
+
+function buildPaymentReceiptNotificationText(context, member) {
+  return [
+    '📌 Comprovante de pagamento recebido',
+    '',
+    member?.name ? `👤 Nome: *${member.name}*` : null,
+    `📱 Contato do solicitante: ${formatRequesterContact(context)}`,
+    '',
+    'Encaminhado automaticamente pelo atendimento da SEC Antares. Confira o arquivo em anexo.'
+  ]
+    .filter((line) => line !== null && line !== undefined)
+    .join('\n');
+}
+
+function receiptForwardedMessage(member) {
+  return [
+    '📄 Recebi seu comprovante de pagamento.',
+    member?.name
+      ? `👤 Identifiquei seu cadastro como *${member.name}*.`
+      : '👤 Não localizei seu cadastro pelo número de WhatsApp — a Tesouraria vai conferir o comprovante manualmente.',
+    '✅ Encaminhei o arquivo para a Tesouraria.',
+    '',
+    '📞 Se precisar, a Tesouraria entra em contato.'
+  ].join('\n');
+}
+
+function failedReceiptForwardingMessage() {
+  return [
+    '⚠️ Não foi possível encaminhar seu comprovante automaticamente.',
+    '📞 Tente novamente mais tarde ou procure a secretaria.'
+  ].join('\n');
 }
 
 function hasUsablePhone(value) {

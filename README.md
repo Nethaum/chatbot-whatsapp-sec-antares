@@ -198,6 +198,10 @@ O menu de mensalidade oferece três opções:
 
 As solicitações de boleto e consulta de situação são encaminhadas automaticamente para a Tesouraria com o contato do solicitante. Quando o sócio não é identificado pelo telefone, o bot solicita o nome completo antes de enviar o pedido.
 
+### Comprovantes de pagamento
+
+Quando o sócio envia uma imagem ou documento acompanhado de palavras relacionadas a pagamento, como "mensalidade", "comprovante", "pix" ou "paguei", o bot encaminha o arquivo automaticamente para a Tesouraria junto com o contato do solicitante e o nome do sócio, quando identificado. Se o arquivo chegar sem esse contexto, o bot o guarda por até 10 minutos e o encaminha se uma mensagem seguinte mencionar pagamento. O sócio recebe uma confirmação informando o que foi encaminhado.
+
 ## Reservas
 
 O menu de reservas permite consultar ambientes e datas.
@@ -224,6 +228,10 @@ Após receber os dados necessários, o bot apresenta o resumo ao usuário e enca
 - Quadra de Areia: Esportes.
 
 A mensagem enviada ao setor contém ambiente, data, nome, horário e contato do solicitante. Os contatos internos do clube são protegidos para não iniciarem o atendimento automático ao receberem esses encaminhamentos.
+
+### Troca de data de uma reserva já confirmada
+
+O menu de reservas também oferece a opção "Já tenho reserva e quero trocar a data". O sócio informa o ambiente da reserva atual e a nova data desejada, seguindo o mesmo fluxo de consulta de disponibilidade. O encaminhamento ao setor responsável usa um cabeçalho diferente ("Solicitação de Troca de Data") e destaca que é preciso localizar a reserva existente antes de confirmar a nova data.
 
 ## Grupos
 
@@ -270,6 +278,7 @@ Esse comando executa:
 - `check:guard`
 - `check:groups`
 - `check:internal-contacts`
+- `check:receipts`
 
 ## Estrutura do projeto
 

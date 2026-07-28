@@ -1,26 +1,9 @@
 import assert from 'node:assert/strict';
 import { buildPreflightReply, buildReply, buildWaitNotice } from '../src/replies.js';
 import { loadClub } from '../src/config.js';
+import { withOperationalContactPhones } from './test-helpers.mjs';
 
 const club = withOperationalContactPhones(loadClub());
-
-function withOperationalContactPhones(clubConfig) {
-  const phonesByArea = {
-    Secretaria: '+55 47 98888-0001',
-    Ecônomo: '+55 47 98888-0002',
-    Esportes: '+55 47 98888-0003',
-    Tesouraria: '+55 47 98888-0004',
-    Social: '+55 47 98888-0005'
-  };
-
-  return {
-    ...clubConfig,
-    contacts: clubConfig.contacts.map((contact) => ({
-      ...contact,
-      phone: phonesByArea[contact.area] || contact.phone
-    }))
-  };
-}
 
 function replyText(reply) {
   return reply && typeof reply === 'object' ? reply.text : reply;
@@ -237,7 +220,7 @@ await askAsMember('11', 'test-member-reservation');
 const dateConfirmation = await askAsMember('30/12/2026', 'test-member-reservation');
 assert.match(dateConfirmation, /Data identificada: \*30\/12\/2026 \(Quarta-feira\)\*/);
 assert.match(dateConfirmation, /Deseja seguir com essa data\?\n\n✅ Responda \*sim\*/);
-assert.match(dateConfirmation, /Informe outra data para consultar/);
+assert.match(dateConfirmation, /Informe \*outra data\* para consultar/);
 assert.doesNotMatch(dateConfirmation, /\*data\*/);
 const memberReservationPrompt = await askAsMember('sim', 'test-member-reservation');
 assert.match(memberReservationPrompt, /Nome: Maria da Silva/);
@@ -294,5 +277,61 @@ const unavailableSocialForwarding = await buildReply('19h', clubWithoutSocialPho
 });
 assert.match(replyText(unavailableSocialForwarding), /Não foi possível encaminhar/);
 assert.equal(unavailableSocialForwarding.notifications, undefined);
+
+const reservationsMenuWithDateChange = await ask('1', 'test-reservations-menu-datechange');
+assert.match(reservationsMenuWithDateChange, /1️⃣5️⃣ Já tenho reserva e quero trocar a data/);
+
+const dateChangeSpacePrompt = await ask('15', 'test-datechange-space');
+assert.match(dateChangeSpacePrompt, /Troca de data/);
+assert.match(dateChangeSpacePrompt, /Qual ambiente é a sua reserva atual/);
+assert.match(dateChangeSpacePrompt, /1️⃣1️⃣ Salão Principal/);
+
+const dateChangeInvalidSpace = await ask('99', 'test-datechange-space');
+assert.match(dateChangeInvalidSpace, /Não reconheci essa opção/);
+
+const dateChangeCancelled = await ask('cancelar', 'test-datechange-cancel');
+await ask('15', 'test-datechange-cancel');
+const dateChangeCancelReply = await ask('cancelar', 'test-datechange-cancel');
+assert.match(dateChangeCancelReply, /Nenhuma solicitação foi enviada/);
+assert.equal(dateChangeCancelled, null);
+
+await askAsMember('15', 'test-member-datechange');
+const dateChangeAskDate = await askAsMember('11', 'test-member-datechange');
+assert.match(dateChangeAskDate, /Informe a \*nova data desejada\*/);
+
+const dateChangeIdentified = await askAsMember('30/12/2026', 'test-member-datechange');
+assert.match(dateChangeIdentified, /Nova data identificada: \*30\/12\/2026 \(Quarta-feira\)\*/);
+
+const dateChangeConfirmation = await askAsMemberRaw('sim', 'test-member-datechange', {
+  userPhone: '5547999990000',
+  userPhones: ['5547999990000']
+});
+assert.match(replyText(dateChangeConfirmation), /Nova data selecionada: \*30\/12\/2026 \(Quarta-feira\)\*/);
+assert.match(replyText(dateChangeConfirmation), /Nome: Maria da Silva/);
+assert.match(replyText(dateChangeConfirmation), /Horário de início do evento/);
+
+const dateChangeReceived = await askAsMemberRaw('19h', 'test-member-datechange', {
+  userPhone: '5547999990000',
+  userPhones: ['5547999990000']
+});
+const dateChangeReceivedText = replyText(dateChangeReceived);
+assert.match(dateChangeReceivedText, /Solicitação de troca de data recebida/);
+assert.match(dateChangeReceivedText, /🗓️ Nova data: \*30\/12\/2026 \(Quarta-feira\)\*/);
+assert.doesNotMatch(dateChangeReceivedText, /🗓️ Data:/);
+assert.equal(dateChangeReceived.notifications?.length, 1);
+assert.equal(dateChangeReceived.notifications[0].area, 'Social');
+assert.match(dateChangeReceived.notifications[0].text, /Solicitação de \*Troca de Data\*/);
+assert.match(dateChangeReceived.notifications[0].text, /Ambiente: \*Salão Principal\*/);
+assert.match(dateChangeReceived.notifications[0].text, /Nova data solicitada: \*30\/12\/2026 \(Quarta-feira\)\*/);
+assert.match(dateChangeReceived.notifications[0].text, /Nome: \*Maria da Silva\*/);
+assert.doesNotMatch(dateChangeReceived.notifications[0].text, /🗓️ Data:/);
+
+const courtDateChangePrompt = await ask('15', 'test-court-datechange');
+assert.match(courtDateChangePrompt, /Qual ambiente é a sua reserva atual/);
+const courtDateChangeSelection = await ask('14', 'test-court-datechange');
+assert.match(courtDateChangeSelection, /Quadra de Areia/);
+
+const dateChangeKeyword = await ask('trocar data', 'test-datechange-keyword');
+assert.match(dateChangeKeyword, /Qual ambiente é a sua reserva atual/);
 
 console.log('Fluxos essenciais conferidos.');

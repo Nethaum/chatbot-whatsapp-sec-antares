@@ -1,3 +1,22 @@
+export const paymentReceiptKeywords = [
+  'mensalidade',
+  'mensal',
+  'comprovante',
+  'pagamento',
+  'pagamentos',
+  'paguei',
+  'pago',
+  'paga',
+  'pagar',
+  'boleto',
+  'pix',
+  'transferencia',
+  'deposito',
+  'quitei',
+  'quitacao',
+  'quitado'
+];
+
 export const mainMenuTriggers = [
   '',
   '0',
@@ -37,6 +56,20 @@ export const backTriggers = [
 export const helpTriggers = ['nao sei', 'nao entendi', 'como funciona', 'socorro', 'o que posso fazer'];
 export const contextMainMenuTriggers = ['0', 'menu', 'inicio', 'home', 'principal', 'menu inicial', 'menu principal', 'voltar ao menu principal'];
 export const reservationSubmenuTriggers = ['reservas', 'reserva'];
+
+export const reservationDateChangeTriggers = [
+  '15',
+  'trocar data',
+  'trocar a data',
+  'mudar data',
+  'mudar a data',
+  'alterar data',
+  'alterar a data',
+  'trocar reserva',
+  'trocar a reserva',
+  'mudar reserva',
+  'mudar a reserva'
+];
 
 export const closingTriggers = ['tchau', 'obrigado', 'valeu', 'ate mais', 'encerrar', 'sair', 'finalizar'];
 export const finishConversationTriggers = ['fim', ...closingTriggers];
