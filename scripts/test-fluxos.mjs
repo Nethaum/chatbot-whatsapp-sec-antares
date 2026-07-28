@@ -222,6 +222,9 @@ assert.match(dateConfirmation, /Data identificada: \*30\/12\/2026 \(Quarta-feira
 assert.match(dateConfirmation, /Deseja seguir com essa data\?\n\n✅ Responda \*sim\*/);
 assert.match(dateConfirmation, /Informe \*outra data\* para consultar/);
 assert.doesNotMatch(dateConfirmation, /\*data\*/);
+assert.match(dateConfirmation, /🆅 Voltar 🔙/);
+assert.doesNotMatch(dateConfirmation, /0️⃣ Menu Principal/);
+assert.doesNotMatch(dateConfirmation, /1️⃣ Reservas/);
 const memberReservationPrompt = await askAsMember('sim', 'test-member-reservation');
 assert.match(memberReservationPrompt, /Nome: Maria da Silva/);
 assert.match(memberReservationPrompt, /Horário de início do evento/);
@@ -298,9 +301,15 @@ assert.equal(dateChangeCancelled, null);
 await askAsMember('15', 'test-member-datechange');
 const dateChangeAskDate = await askAsMember('11', 'test-member-datechange');
 assert.match(dateChangeAskDate, /Informe a \*nova data desejada\*/);
+assert.match(dateChangeAskDate, /🆅 Voltar 🔙/);
+assert.doesNotMatch(dateChangeAskDate, /0️⃣ Menu Principal/);
+assert.doesNotMatch(dateChangeAskDate, /1️⃣ Reservas/);
 
 const dateChangeIdentified = await askAsMember('30/12/2026', 'test-member-datechange');
 assert.match(dateChangeIdentified, /Nova data identificada: \*30\/12\/2026 \(Quarta-feira\)\*/);
+assert.match(dateChangeIdentified, /🆅 Voltar 🔙/);
+assert.doesNotMatch(dateChangeIdentified, /0️⃣ Menu Principal/);
+assert.doesNotMatch(dateChangeIdentified, /1️⃣ Reservas/);
 
 const dateChangeConfirmation = await askAsMemberRaw('sim', 'test-member-datechange', {
   userPhone: '5547999990000',

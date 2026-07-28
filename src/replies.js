@@ -743,12 +743,7 @@ function formatTimeGreeting(date = new Date()) {
 }
 
 function withNavigationShortcuts(reply, submenuKey, options = {}) {
-  const shortcuts = ['0️⃣ Menu Principal 🏠'];
-
-  if (options.showBack && parentMenuShortcutLabels[submenuKey]) {
-    shortcuts.push(parentMenuShortcutLabels[submenuKey]);
-    shortcuts.push('🔙 Voltar (V)');
-  }
+  const shortcuts = navigationShortcutLines(submenuKey, options);
 
   if (reply && typeof reply === 'object') {
     return {
@@ -761,7 +756,25 @@ function withNavigationShortcuts(reply, submenuKey, options = {}) {
 }
 
 function withParentShortcuts(reply, submenuKey) {
-  return withNavigationShortcuts(reply, submenuKey, { showBack: true });
+  return withNavigationShortcuts(reply, submenuKey, {
+    showBack: true,
+    backOnly: submenuKey === 'reservations'
+  });
+}
+
+function navigationShortcutLines(submenuKey, options = {}) {
+  if (options.backOnly && options.showBack && parentMenuShortcutLabels[submenuKey]) {
+    return ['🆅 Voltar 🔙'];
+  }
+
+  const shortcuts = ['0️⃣ Menu Principal 🏠'];
+
+  if (options.showBack && parentMenuShortcutLabels[submenuKey]) {
+    shortcuts.push(parentMenuShortcutLabels[submenuKey]);
+    shortcuts.push('🆅 Voltar 🔙');
+  }
+
+  return shortcuts;
 }
 
 async function handleReservationSpaceSelection(choice, chatId, member = null, options = {}) {
