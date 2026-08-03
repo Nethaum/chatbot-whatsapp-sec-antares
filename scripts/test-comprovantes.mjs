@@ -9,6 +9,7 @@ assert.equal(isPaymentReceiptText('Boa tarde mensalidade referente o mês de ago
 assert.equal(isPaymentReceiptText('Segue o comprovante do pix'), true);
 assert.equal(isPaymentReceiptText('Oi, tudo bem?'), false);
 assert.equal(isPaymentReceiptText(''), false);
+assert.equal(isPaymentReceiptText('Mensalidade da dança'), true);
 
 const forwarding = await buildPaymentReceiptForwarding(club, {
   chatId: 'test-receipt',
@@ -19,6 +20,19 @@ assert.equal(forwarding.notification.area, 'Tesouraria');
 assert.ok(forwarding.notification.to);
 assert.match(forwarding.notification.text, /Comprovante de pagamento recebido/);
 assert.match(forwarding.notification.text, /Contato do solicitante: \+55 47 99999-0000/);
+assert.doesNotMatch(forwarding.notification.text, /Mensagem do sócio/);
+
+const forwardingWithCaption = await buildPaymentReceiptForwarding(
+  club,
+  {
+    chatId: 'test-receipt-caption',
+    userPhone: '5547999990000',
+    userPhones: ['5547999990000']
+  },
+  'Mensalidade da dança'
+);
+assert.match(forwardingWithCaption.notification.text, /💬 Mensagem do sócio: "Mensalidade da dança"/);
+
 assert.match(forwarding.successText, /Recebi seu comprovante de pagamento/);
 assert.match(forwarding.successText, /Encaminhei o arquivo para a Tesouraria/);
 assert.match(forwarding.failureText, /Não foi possível encaminhar/);

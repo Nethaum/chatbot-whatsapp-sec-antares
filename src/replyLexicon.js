@@ -276,15 +276,6 @@ export const menuNumberMap = {
   6: 'contacts'
 };
 
-export const parentMenuShortcutLabels = {
-  reservations: '1️⃣ Reservas 🗓️',
-  events: '2️⃣ Eventos 🎊',
-  dues: '3️⃣ Mensalidade 💳',
-  membership: '4️⃣ Associação 🧾',
-  feedback: '5️⃣ Feedback 💬',
-  contacts: '6️⃣ Contatos 📞'
-};
-
 export const screenParents = {
   reservations: 'main',
   events: 'main',

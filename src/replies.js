@@ -26,7 +26,6 @@ import {
   mainMenuTriggers,
   menuNumberMap,
   negativeConfirmationTriggers,
-  parentMenuShortcutLabels,
   paymentReceiptKeywords,
   pauseRequestTriggers,
   reservationDateChangeTriggers,
@@ -670,6 +669,31 @@ function isOneOf(text, triggers) {
   return triggers.includes(text);
 }
 
+export function isDirectCommandInput(input) {
+  const text = normalizeText(input);
+
+  return (
+    isBlankOrEmojiOnly(text) ||
+    /^\d+$/.test(text) ||
+    Boolean(menuNumberMap[text]) ||
+    Boolean(reservationNumberMap[text]) ||
+    Boolean(duesActionMap[text]) ||
+    isOneOf(text, mainMenuTriggers) ||
+    isOneOf(text, backTriggers) ||
+    isOneOf(text, contextMainMenuTriggers) ||
+    isOneOf(text, reservationSubmenuTriggers) ||
+    isOneOf(text, reservationDateChangeTriggers) ||
+    isOneOf(text, cancelFlowTriggers) ||
+    isOneOf(text, dateConfirmationTriggers) ||
+    isOneOf(text, negativeConfirmationTriggers) ||
+    isOneOf(text, changeDateTriggers) ||
+    isOneOf(text, pauseRequestTriggers) ||
+    isOneOf(text, acknowledgementTriggers) ||
+    isOneOf(text, feedbackSubmitTriggers) ||
+    isOneOf(text, finishConversationTriggers)
+  );
+}
+
 function isBlankOrEmojiOnly(text) {
   return text === '' || !/[\p{L}\p{N}]/u.test(text);
 }
@@ -686,8 +710,6 @@ function menu(club, member = null) {
     '4️⃣ Associação 🧾',
     '5️⃣ Feedback 💬',
     '6️⃣ Contatos 📞',
-    '',
-    '0️⃣ Menu Principal 🏠',
     ''
   ];
 
@@ -743,7 +765,7 @@ function formatTimeGreeting(date = new Date()) {
 }
 
 function withNavigationShortcuts(reply, submenuKey, options = {}) {
-  const shortcuts = navigationShortcutLines(submenuKey, options);
+  const shortcuts = navigationShortcutLines();
 
   if (reply && typeof reply === 'object') {
     return {
@@ -756,25 +778,11 @@ function withNavigationShortcuts(reply, submenuKey, options = {}) {
 }
 
 function withParentShortcuts(reply, submenuKey) {
-  return withNavigationShortcuts(reply, submenuKey, {
-    showBack: true,
-    backOnly: submenuKey === 'reservations'
-  });
+  return withNavigationShortcuts(reply, submenuKey, { showBack: true });
 }
 
-function navigationShortcutLines(submenuKey, options = {}) {
-  if (options.backOnly && options.showBack && parentMenuShortcutLabels[submenuKey]) {
-    return ['🆅 Voltar 🔙'];
-  }
-
-  const shortcuts = ['0️⃣ Menu Principal 🏠'];
-
-  if (options.showBack && parentMenuShortcutLabels[submenuKey]) {
-    shortcuts.push(parentMenuShortcutLabels[submenuKey]);
-    shortcuts.push('🆅 Voltar 🔙');
-  }
-
-  return shortcuts;
+function navigationShortcutLines() {
+  return ['🆅 Voltar 🔙'];
 }
 
 async function handleReservationSpaceSelection(choice, chatId, member = null, options = {}) {
@@ -2113,7 +2121,7 @@ export function isPaymentReceiptText(text) {
   return containsAny(text, paymentReceiptKeywords);
 }
 
-export async function buildPaymentReceiptForwarding(club, context = {}) {
+export async function buildPaymentReceiptForwarding(club, context = {}, caption = '') {
   const userPhones = contextUserPhones(context);
   let member = null;
 
@@ -2130,7 +2138,7 @@ export async function buildPaymentReceiptForwarding(club, context = {}) {
     ? {
         to: contact.phone,
         area: contact.area,
-        text: buildPaymentReceiptNotificationText(context, member)
+        text: buildPaymentReceiptNotificationText(context, member, caption)
       }
     : null;
 
@@ -2141,12 +2149,13 @@ export async function buildPaymentReceiptForwarding(club, context = {}) {
   };
 }
 
-function buildPaymentReceiptNotificationText(context, member) {
+function buildPaymentReceiptNotificationText(context, member, caption) {
   return [
     '📌 Comprovante de pagamento recebido',
     '',
     member?.name ? `👤 Nome: *${member.name}*` : null,
     `📱 Contato do solicitante: ${formatRequesterContact(context)}`,
+    String(caption || '').trim() ? `💬 Mensagem do sócio: "${String(caption).trim()}"` : null,
     '',
     'Encaminhado automaticamente pelo atendimento da SEC Antares. Confira o arquivo em anexo.'
   ]
