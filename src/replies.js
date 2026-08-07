@@ -26,7 +26,6 @@ import {
   mainMenuTriggers,
   menuNumberMap,
   negativeConfirmationTriggers,
-  paymentReceiptKeywords,
   pauseRequestTriggers,
   reservationDateChangeTriggers,
   reservationNumberMap,
@@ -2115,71 +2114,6 @@ function buildDuesNotificationText(action, context, member) {
   ]
     .filter((line) => line !== null && line !== undefined)
     .join('\n');
-}
-
-export function isPaymentReceiptText(text) {
-  return containsAny(text, paymentReceiptKeywords);
-}
-
-export async function buildPaymentReceiptForwarding(club, context = {}, caption = '') {
-  const userPhones = contextUserPhones(context);
-  let member = null;
-
-  if (userPhones.length) {
-    const result = await findMemberByPhone(userPhones);
-
-    if (result.status === 'found') {
-      member = result.member;
-    }
-  }
-
-  const contact = findContactByArea(club, 'Tesouraria');
-  const notification = hasUsablePhone(contact?.phone)
-    ? {
-        to: contact.phone,
-        area: contact.area,
-        text: buildPaymentReceiptNotificationText(context, member, caption)
-      }
-    : null;
-
-  return {
-    notification,
-    successText: receiptForwardedMessage(member),
-    failureText: failedReceiptForwardingMessage()
-  };
-}
-
-function buildPaymentReceiptNotificationText(context, member, caption) {
-  return [
-    '📌 Comprovante de pagamento recebido',
-    '',
-    member?.name ? `👤 Nome: *${member.name}*` : null,
-    `📱 Contato do solicitante: ${formatRequesterContact(context)}`,
-    String(caption || '').trim() ? `💬 Mensagem do sócio: "${String(caption).trim()}"` : null,
-    '',
-    'Encaminhado automaticamente pelo atendimento da SEC Antares. Confira o arquivo em anexo.'
-  ]
-    .filter((line) => line !== null && line !== undefined)
-    .join('\n');
-}
-
-function receiptForwardedMessage(member) {
-  return [
-    '📄 Recebi seu comprovante de pagamento.',
-    member?.name
-      ? `👤 Identifiquei seu cadastro como *${member.name}*.`
-      : '👤 Não localizei seu cadastro pelo número de WhatsApp — a Tesouraria vai conferir o comprovante manualmente.',
-    '✅ Encaminhei o arquivo para a Tesouraria.',
-    '',
-    '📞 Se precisar, a Tesouraria entra em contato.'
-  ].join('\n');
-}
-
-function failedReceiptForwardingMessage() {
-  return [
-    '⚠️ Não foi possível encaminhar seu comprovante automaticamente.',
-    '📞 Tente novamente mais tarde ou procure a secretaria.'
-  ].join('\n');
 }
 
 function hasUsablePhone(value) {

@@ -14,7 +14,6 @@ O projeto roda no computador do operador, usa planilhas como fonte de dados para
 - Consulta de horários da quadra de areia conforme regras da agenda.
 - Encaminhamento automático das solicitações de reserva ao setor responsável.
 - Menu de mensalidade com solicitação de boleto, consulta de situação e informações gerais.
-- Encaminhamento automático de comprovantes de pagamento (imagem, PDF ou comprovante nativo do WhatsApp) para a Tesouraria.
 - Solicitação de troca de data de reservas já confirmadas.
 - Agrupamento de mensagens enviadas em sequência antes de responder, para considerar o contexto completo do pedido.
 - Menu de associação com planos, benefícios e envio de materiais.
@@ -199,16 +198,7 @@ O menu de mensalidade oferece três opções:
 - Consultar situação financeira.
 - Ver informações sobre vencimento, valores e dependentes.
 
-As solicitações de boleto e consulta de situação são encaminhadas automaticamente para a Tesouraria com o contato do solicitante. Quando o sócio não é identificado pelo telefone, o bot solicita o nome completo antes de enviar o pedido.
-
-### Comprovantes de pagamento
-
-Quando o sócio envia uma imagem, PDF ou um comprovante nativo de pagamento do WhatsApp (ex.: recibo de PIX compartilhado direto do aplicativo do banco), o bot encaminha automaticamente para a Tesouraria, junto com o contato do solicitante, o nome do sócio (quando identificado) e a mensagem que a pessoa escreveu.
-
-- Comprovantes nativos de pagamento do WhatsApp são sempre encaminhados, independentemente do texto enviado junto.
-- Imagens e documentos comuns são encaminhados quando o texto enviado junto (ou uma mensagem seguinte) menciona pagamento (ex.: "mensalidade", "comprovante", "pix", "paguei"). Sem esse contexto, o bot guarda o arquivo por até 10 minutos aguardando uma mensagem que o identifique.
-- Quando o arquivo não tem uma cópia baixável (caso de alguns comprovantes nativos), o bot usa o recurso de encaminhar mensagem do próprio WhatsApp.
-- O sócio recebe uma confirmação informando o que foi identificado e encaminhado.
+As solicitações de boleto e consulta de situação são encaminhadas automaticamente para a Tesouraria com o contato do solicitante. Quando o sócio não é identificado pelo telefone, o bot solicita o nome completo antes de enviar o pedido. O bot não pede nem encaminha comprovantes de pagamento — a conferência é feita direto pela Tesouraria.
 
 ## Reservas
 
@@ -243,7 +233,7 @@ O menu de reservas também oferece a opção "Já tenho reserva e quero trocar a
 
 ## Agrupamento de mensagens
 
-Quando a mensagem é um comando direto e completo (ex.: número de menu, "sim", "não", "voltar", "menu", saudações), o bot responde imediatamente. Para qualquer outro texto, o bot aguarda cerca de 8 segundos de silêncio antes de responder, agrupando mensagens (e arquivos) enviados nesse intervalo em uma única interpretação. Isso evita respostas fragmentadas ou repetidas quando a pessoa envia o pedido em várias mensagens seguidas.
+Quando a mensagem é um comando direto e completo (ex.: número de menu, "sim", "não", "voltar", "menu", saudações), o bot responde imediatamente. Para qualquer outro texto, o bot aguarda cerca de 8 segundos de silêncio antes de responder, agrupando as mensagens enviadas nesse intervalo em uma única interpretação. Isso evita respostas fragmentadas ou repetidas quando a pessoa envia o pedido em várias mensagens seguidas.
 
 ## Navegação
 
@@ -294,7 +284,6 @@ Esse comando executa:
 - `check:guard`
 - `check:groups`
 - `check:internal-contacts`
-- `check:receipts`
 - `check:direct-command`
 
 ## Estrutura do projeto

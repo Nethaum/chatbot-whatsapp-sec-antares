@@ -1,22 +1,3 @@
-export const paymentReceiptKeywords = [
-  'mensalidade',
-  'mensal',
-  'comprovante',
-  'pagamento',
-  'pagamentos',
-  'paguei',
-  'pago',
-  'paga',
-  'pagar',
-  'boleto',
-  'pix',
-  'transferencia',
-  'deposito',
-  'quitei',
-  'quitacao',
-  'quitado'
-];
-
 export const mainMenuTriggers = [
   '',
   '0',

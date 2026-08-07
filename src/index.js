@@ -5,14 +5,7 @@ import path from 'node:path';
 import { settings, loadClub } from './config.js';
 import { logConversation } from './logger.js';
 import { acquireInstanceLock, shouldProcessMessage, shouldSendReply } from './messageGuard.js';
-import {
-  buildPaymentReceiptForwarding,
-  buildPreflightReply,
-  buildReply,
-  buildWaitNotice,
-  isDirectCommandInput,
-  isPaymentReceiptText
-} from './replies.js';
+import { buildPreflightReply, buildReply, buildWaitNotice, isDirectCommandInput } from './replies.js';
 import { compactWhitespace, uniqueValues } from './text.js';
 import { isGroupChat, isGroupChatId, isGroupMessage } from './groupPolicy.js';
 import { isInternalContactPhone, isInternalNotificationText } from './internalContacts.js';
@@ -26,10 +19,6 @@ const unreadScanInitialDelayMs = 3000;
 const unreadScanRetryDelayMs = 5000;
 const maxUnreadScanAttempts = 3;
 const contactLookupTimeoutMs = 1200;
-const pendingReceiptMediaTtlMs = 10 * 60 * 1000;
-const pendingReceiptMedia = new Map();
-const receiptCandidateMessageTypes = new Set(['image', 'document', 'payment', 'order']);
-const nativePaymentMessageTypes = new Set(['payment', 'order']);
 const conversationBurstDebounceMs = 8000;
 const pendingConversationBursts = new Map();
 let startupErrorHandled = false;
@@ -237,22 +226,6 @@ async function processConversationBurst(items) {
   const last = items[items.length - 1];
   const { chat, chatId, userPhones, isGroup, from } = last;
   const combinedBody = compactWhitespace(items.map((item) => item.body).filter(Boolean).join('\n'));
-  const receiptItems = items.filter((item) => receiptCandidateMessageTypes.has(item.message.type));
-
-  if (receiptItems.length) {
-    for (const receiptItem of receiptItems) {
-      await handleBurstReceiptItem(receiptItem, combinedBody, chat, chatId, userPhones, isGroup);
-    }
-    return;
-  }
-
-  if (combinedBody && isPaymentReceiptText(combinedBody)) {
-    const claimed = await tryClaimPendingReceipt(combinedBody, chat, chatId, userPhones, isGroup, from);
-
-    if (claimed) {
-      return;
-    }
-  }
 
   if (!combinedBody) {
     return;
@@ -267,119 +240,6 @@ async function processConversationBurst(items) {
     originalBody: combinedBody,
     userPhones
   });
-}
-
-async function handleBurstReceiptItem(item, combinedBody, chat, chatId, userPhones, isGroup) {
-  const payload = await buildReceiptPayload(item.message);
-
-  if (!payload) {
-    return;
-  }
-
-  const caption = item.body || combinedBody;
-  const shouldForwardNow = nativePaymentMessageTypes.has(item.message.type) || isPaymentReceiptText(caption);
-
-  if (shouldForwardNow) {
-    const forwarded = await forwardReceiptAndReply(chat, chatId, userPhones, payload, caption);
-    logConversation({
-      from: item.from,
-      isGroup,
-      body: item.body || '[arquivo]',
-      reply: forwarded
-        ? '[comprovante encaminhado para a Tesouraria]'
-        : '[falha ao encaminhar comprovante para a Tesouraria]'
-    });
-    return;
-  }
-
-  pendingReceiptMedia.set(chatId, { ...payload, receivedAt: Date.now() });
-  logConversation({
-    from: item.from,
-    isGroup,
-    body: item.body || '[arquivo]',
-    reply: '[comprovante recebido aguardando contexto de pagamento]'
-  });
-}
-
-async function tryClaimPendingReceipt(caption, chat, chatId, userPhones, isGroup, from) {
-  const pending = pendingReceiptMedia.get(chatId);
-  pendingReceiptMedia.delete(chatId);
-
-  if (!pending || Date.now() - pending.receivedAt > pendingReceiptMediaTtlMs) {
-    return false;
-  }
-
-  const forwarded = await forwardReceiptAndReply(chat, chatId, userPhones, pending, caption);
-  logConversation({
-    from,
-    isGroup,
-    body: caption,
-    reply: forwarded
-      ? '[comprovante encaminhado para a Tesouraria]'
-      : '[falha ao encaminhar comprovante para a Tesouraria]'
-  });
-  return true;
-}
-
-async function buildReceiptPayload(message) {
-  if (!message.hasMedia) {
-    return { message };
-  }
-
-  try {
-    const media = await message.downloadMedia();
-    return media ? { media } : { message };
-  } catch (error) {
-    console.warn('Não foi possível baixar o arquivo recebido, encaminharei a mensagem original:', error?.message || error);
-    return { message };
-  }
-}
-
-async function forwardReceiptAndReply(chat, chatId, userPhones, payload, caption) {
-  const { notification, successText, failureText } = await buildPaymentReceiptForwarding(
-    club,
-    {
-      chatId,
-      userPhone: userPhones[0] || '',
-      userPhones
-    },
-    caption
-  );
-
-  if (notification) {
-    try {
-      const tesourariaChatId = await resolveNotificationChatId(notification.to);
-
-      if (tesourariaChatId) {
-        if (payload.media) {
-          await sendMessageSafely(
-            createChatAdapter(tesourariaChatId, false),
-            payload.media,
-            { caption: notification.text },
-            'comprovante de pagamento'
-          );
-        } else {
-          await payload.message.forward(tesourariaChatId);
-          await sendMessageSafely(
-            createChatAdapter(tesourariaChatId, false),
-            notification.text,
-            undefined,
-            'comprovante de pagamento (encaminhamento nativo)'
-          );
-        }
-
-        await sendReply(chat, successText);
-        return true;
-      }
-
-      console.warn(`Numero nao encontrado no WhatsApp para encaminhamento de comprovante: ${notification.to}`);
-    } catch (error) {
-      console.error(`Falha ao encaminhar comprovante para ${notification.area}:`, formatErrorForLog(error));
-    }
-  }
-
-  await sendReply(chat, failureText);
-  return false;
 }
 
 async function resolveIncomingMessageContext(message) {
