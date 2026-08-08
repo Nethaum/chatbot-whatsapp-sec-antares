@@ -99,6 +99,25 @@ npm.cmd run autostart:uninstall
 
 A saída da execução automática fica em `.bot_state/autostart.log`.
 
+## Watchdog (reinício automático se o bot cair)
+
+A inicialização automática só roda no login do Windows. Se o computador suspender (sleep) e "acordar" sozinho, ou se o bot cair por qualquer outro motivo, ele pode ficar fora do ar até o próximo login manual.
+
+Para evitar isso, instale o watchdog, que verifica a cada 10 minutos se o bot está em execução e reinicia automaticamente se não estiver:
+
+```powershell
+npm.cmd run watchdog:install
+```
+
+Para consultar o status ou remover:
+
+```powershell
+npm.cmd run watchdog:status
+npm.cmd run watchdog:uninstall
+```
+
+A saída do watchdog fica em `.bot_state/watchdog.log` (só grava algo quando precisa reiniciar o bot).
+
 ## Configuração
 
 As principais variáveis podem ser ajustadas no `.env`:
