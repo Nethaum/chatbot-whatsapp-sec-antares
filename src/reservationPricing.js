@@ -1,10 +1,44 @@
+import fs from 'node:fs';
 import ExcelJS from 'exceljs';
-import { settings } from './config.js';
+import { rootPath, settings } from './config.js';
 import { normalizeText } from './text.js';
 import { downloadWorkbook } from './workbookDownloader.js';
 import { cellText, cellValue, cellValueToText, compactRowText } from './excelUtils.js';
 
 const pricingSheetName = 'Tabela de Precos';
+const pricingFallbackPath = rootPath('data', 'pricing-fallback.json');
+
+// Valores conferidos manualmente em 09/08/2026, usados quando a planilha
+// online estiver indisponível. São atualizados automaticamente sempre que
+// a planilha volta a responder (ver savePricingFallback).
+const seedPricingFallback = {
+  'Salão Principal': {
+    capacity: '400 pessoas',
+    rows: [
+      { eventType: 'Casamentos / Eventos', value: '*R$ 1.620,00*', cleaningFee: '*R$ 350,00*' },
+      { eventType: 'Aniversários', value: '*R$ 810,00*', cleaningFee: '*R$ 350,00*' },
+      { eventType: 'Sócios', value: '*R$ 0,00*', cleaningFee: '*R$ 350,00*' }
+    ],
+    notes: []
+  },
+  'Salão Restaurante': {
+    capacity: '120 pessoas',
+    rows: [
+      { eventType: 'Casamentos', value: '*R$ 950,00*', cleaningFee: '*R$ 200,00*' },
+      { eventType: 'Aniversários / Eventos', value: '*R$ 400,00*', cleaningFee: '*R$ 200,00*' },
+      { eventType: 'Sócios', value: '*R$ 0,00*', cleaningFee: '*R$ 200,00*' }
+    ],
+    notes: []
+  },
+  Churrasqueira: {
+    capacity: '80 pessoas',
+    rows: [
+      { eventType: 'Aniversários / Eventos', value: '*R$ 750,00*', cleaningFee: '*R$ 200,00*' },
+      { eventType: 'Sócios', value: '*R$ 0,00*', cleaningFee: '*R$ 150,00*' }
+    ],
+    notes: []
+  }
+};
 
 export async function buildReservationPricingText(spaceName) {
   try {
@@ -15,10 +49,47 @@ export async function buildReservationPricingText(spaceName) {
       return '💰 Valores: não encontrados para este ambiente.';
     }
 
+    savePricingFallback(spaceName, pricing);
     return formatPricing(pricing);
   } catch (error) {
     console.error('Erro ao consultar tabela de preços:', error);
+    return buildFallbackPricingText(spaceName);
+  }
+}
+
+function buildFallbackPricingText(spaceName) {
+  const fallback = loadPricingFallback()[spaceName];
+
+  if (!fallback?.rows?.length) {
     return '💰 Valores: não foi possível consultar no momento.';
+  }
+
+  console.warn(`Planilha de preços indisponível. Usando valores salvos localmente para "${spaceName}".`);
+  return formatPricing(fallback);
+}
+
+function loadPricingFallback() {
+  try {
+    return JSON.parse(fs.readFileSync(pricingFallbackPath, 'utf8'));
+  } catch {
+    return seedPricingFallback;
+  }
+}
+
+function savePricingFallback(spaceName, pricing) {
+  try {
+    const current = loadPricingFallback();
+
+    current[spaceName] = {
+      capacity: pricing.capacity,
+      rows: pricing.rows,
+      notes: pricing.notes,
+      updatedAt: new Date().toISOString()
+    };
+
+    fs.writeFileSync(pricingFallbackPath, `${JSON.stringify(current, null, 2)}\n`);
+  } catch (error) {
+    console.warn('Não foi possível salvar os valores de reserva localmente:', error?.message || error);
   }
 }
 

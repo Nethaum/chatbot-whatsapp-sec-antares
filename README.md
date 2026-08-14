@@ -149,6 +149,8 @@ COURT_SPREADSHEET_URL=
 
 Quando `PRICING_SPREADSHEET_URL` fica vazio, o bot procura a aba de preços dentro da própria planilha de eventos. Use essa variável apenas se a tabela de valores estiver em um arquivo separado.
 
+Toda vez que a consulta à planilha de preços funciona, o bot salva os valores em `data/pricing-fallback.json`. Se a planilha ficar indisponível, o bot usa esses últimos valores salvos em vez de deixar o sócio sem resposta. O arquivo é atualizado sozinho sempre que a planilha volta a responder — não precisa editar manualmente.
+
 Os telefones operacionais dos setores devem ficar apenas no `.env` local. O arquivo `data/club.json` mantém somente a estrutura pública dos contatos. Os encaminhamentos automáticos dependem dessas variáveis locais, especialmente `TESOURARIA_PHONE`, `SOCIAL_PHONE` e `ESPORTES_PHONE`.
 
 ## Lista de sócios

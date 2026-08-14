@@ -1,0 +1,69 @@
+{
+  "Salão Principal": {
+    "capacity": "400 pessoas",
+    "rows": [
+      {
+        "eventType": "Casamentos / Eventos",
+        "value": "*R$ 1.620,00*",
+        "cleaningFee": "*R$ 350,00*"
+      },
+      {
+        "eventType": "Aniversários",
+        "value": "*R$ 810,00*",
+        "cleaningFee": "*R$ 350,00*"
+      },
+      {
+        "eventType": "Sócios",
+        "value": "*R$ 0,00*",
+        "cleaningFee": "*R$ 350,00*"
+      }
+    ],
+    "notes": [
+      "Limpeza Antes e Depois Inclusa"
+    ],
+    "updatedAt": "2026-08-14T15:44:49.273Z"
+  },
+  "Salão Restaurante": {
+    "capacity": "120 pessoas",
+    "rows": [
+      {
+        "eventType": "Casamentos",
+        "value": "*R$ 950,00*",
+        "cleaningFee": "*R$ 200,00*"
+      },
+      {
+        "eventType": "Aniversários / Eventos",
+        "value": "*R$ 400,00*",
+        "cleaningFee": "*R$ 200,00*"
+      },
+      {
+        "eventType": "Sócios",
+        "value": "*R$ 0,00*",
+        "cleaningFee": "*R$ 200,00*"
+      }
+    ],
+    "notes": [
+      "Limpeza Antes e Depois Inclusa"
+    ],
+    "updatedAt": "2026-08-14T15:43:23.687Z"
+  },
+  "Churrasqueira": {
+    "capacity": "80 pessoas",
+    "rows": [
+      {
+        "eventType": "Aniversários / Eventos",
+        "value": "*R$ 750,00*",
+        "cleaningFee": "*R$ 200,00*"
+      },
+      {
+        "eventType": "Sócios",
+        "value": "*R$ 0,00*",
+        "cleaningFee": "*R$ 150,00*"
+      }
+    ],
+    "notes": [
+      "Limpeza Antes e Depois Inclusa"
+    ],
+    "updatedAt": "2026-08-14T15:57:50.004Z"
+  }
+}
