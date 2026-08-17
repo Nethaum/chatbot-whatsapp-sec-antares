@@ -160,11 +160,14 @@ export const intentMatchers = [
       'cancha',
       'bocha',
       'espaco',
+      'area de festa',
       'disponibilidade',
+      'disponivel',
       'datas disponiveis',
       'quero reservar',
       'como reservar',
-      'aluguel de espaco'
+      'aluguel de espaco',
+      'alugar'
     ]
   },
   {

@@ -281,6 +281,12 @@ const unavailableSocialForwarding = await buildReply('19h', clubWithoutSocialPho
 assert.match(replyText(unavailableSocialForwarding), /Não foi possível encaminhar/);
 assert.equal(unavailableSocialForwarding.notifications, undefined);
 
+const partyAreaAvailabilityQuestion = await ask('Boa tarde! A área de festa externa está disponível dia 19/09 ?', 'test-party-area-availability');
+assert.match(partyAreaAvailabilityQuestion, /Escolha o ambiente que deseja reservar/);
+
+const upcomingEventsQuestion = await ask('Vocês têm festa esse fim de semana?', 'test-upcoming-events-question');
+assert.match(upcomingEventsQuestion, /Eventos/);
+
 const reservationsMenuWithDateChange = await ask('1', 'test-reservations-menu-datechange');
 assert.match(reservationsMenuWithDateChange, /1️⃣5️⃣ Já tenho reserva e quero trocar a data/);
 
