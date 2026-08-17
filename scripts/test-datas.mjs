@@ -13,5 +13,8 @@ assert.deepEqual(parseDateText('30', referenceDate), { day: 30, month: 7, year: 
 assert.deepEqual(parseDateText('11', referenceDate), { day: 11, month: 8, year: 2026 });
 assert.equal(parseDateText('31 fevereiro', referenceDate), null);
 assert.equal(parseDateText('25 ontem', referenceDate), null);
+assert.deepEqual(parseDateText('dia 20 setembro', referenceDate), { day: 20, month: 9, year: 2026 });
+assert.deepEqual(parseDateText('Dia 20 setembro', referenceDate), { day: 20, month: 9, year: 2026 });
+assert.deepEqual(parseDateText('dia 20/09', referenceDate), { day: 20, month: 9, year: 2026 });
 
 console.log('Datas em formato flexível conferidas.');

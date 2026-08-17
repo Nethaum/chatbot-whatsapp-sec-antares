@@ -29,7 +29,7 @@ const monthNames = new Map([
 ]);
 
 export function parseDateText(value, now = new Date()) {
-  const text = String(value || '').trim();
+  const text = String(value || '').trim().replace(/^dias?\s+/i, '');
   const dayOnlyMatch = text.match(/^(\d{1,2})$/);
 
   if (dayOnlyMatch) {

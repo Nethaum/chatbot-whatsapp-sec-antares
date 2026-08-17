@@ -218,7 +218,7 @@ assert.match(reservationFinished, /Atendimento encerrado/);
 await askAsMember('1', 'test-member-reservation');
 await askAsMember('11', 'test-member-reservation');
 const dateConfirmation = await askAsMember('30/12/2026', 'test-member-reservation');
-assert.match(dateConfirmation, /Data identificada: \*30\/12\/2026 \(Quarta-feira\)\*/);
+assert.match(dateConfirmation, /A data \*30\/12\/2026 \(Quarta-feira\)\* está \*disponível\*/);
 assert.match(dateConfirmation, /Deseja seguir com essa data\?\n\n✅ Responda \*sim\*/);
 assert.match(dateConfirmation, /Informe \*outra data\* para consultar/);
 assert.doesNotMatch(dateConfirmation, /\*data\*/);
@@ -312,7 +312,7 @@ assert.doesNotMatch(dateChangeAskDate, /0️⃣ Menu Principal/);
 assert.doesNotMatch(dateChangeAskDate, /1️⃣ Reservas/);
 
 const dateChangeIdentified = await askAsMember('30/12/2026', 'test-member-datechange');
-assert.match(dateChangeIdentified, /Nova data identificada: \*30\/12\/2026 \(Quarta-feira\)\*/);
+assert.match(dateChangeIdentified, /A nova data \*30\/12\/2026 \(Quarta-feira\)\* está \*disponível\*/);
 assert.match(dateChangeIdentified, /🆅 Voltar 🔙/);
 assert.doesNotMatch(dateChangeIdentified, /0️⃣ Menu Principal/);
 assert.doesNotMatch(dateChangeIdentified, /1️⃣ Reservas/);

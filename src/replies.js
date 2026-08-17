@@ -1517,7 +1517,7 @@ function confirmDateInstructions() {
   return [
     '❓ Deseja seguir com essa data?',
     '',
-    '✅ Responda *sim* para continuar.',
+    '✅ Responda *sim* para prosseguir com a reserva nesta data.',
     '📅 Informe *outra data* para consultar.',
     '❌ Responda *não* para voltar ao menu anterior.'
   ];
@@ -1549,7 +1549,7 @@ function confirmReservationDate(choice, selectedDate, isDateChange = false) {
   return [
     `${choice.emoji} ${choice.name}`,
     '',
-    `🔎 ${isDateChange ? 'Nova data identificada' : 'Data identificada'}: ${formatBoldDateWithWeekday(selectedDate)}`,
+    `✅ A ${isDateChange ? 'nova data' : 'data'} ${formatBoldDateWithWeekday(selectedDate)} está *disponível* para este ambiente.`,
     '',
     ...confirmDateInstructions()
   ].join('\n');
