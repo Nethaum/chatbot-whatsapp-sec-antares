@@ -45,9 +45,9 @@ assert.doesNotMatch(memberMenu, /Maria da Silva/);
 
 const duesMenu = await ask('3', 'test-dues');
 assert.match(duesMenu, /Mensalidade/);
-assert.match(duesMenu, /31\. Solicitar boleto/);
-assert.match(duesMenu, /32\. Consultar situação/);
-assert.match(duesMenu, /33\. Informações/);
+assert.match(duesMenu, /3️⃣1️⃣ Solicitar boleto/);
+assert.match(duesMenu, /3️⃣2️⃣ Consultar situação/);
+assert.match(duesMenu, /3️⃣3️⃣ Informações/);
 assert.doesNotMatch(duesMenu, /wa\.me|Abrir mensagem pronta|Abrir conversa/);
 
 const duesInfo = await ask('33', 'test-dues-info');
@@ -107,7 +107,7 @@ assert.match(replyText(duesInvalidNameRetry), /Não entendi o nome informado/);
 
 await buildReply('31', club, { chatId: 'test-dues-back-to-menu', memberPreflightDone: true });
 const duesBackToMenu = await buildReply('3', club, { chatId: 'test-dues-back-to-menu', memberPreflightDone: true });
-assert.match(replyText(duesBackToMenu), /31\. Solicitar boleto/);
+assert.match(replyText(duesBackToMenu), /3️⃣1️⃣ Solicitar boleto/);
 
 await buildReply('31', club, { chatId: 'test-dues-change-action', memberPreflightDone: true });
 const changedDuesAction = await buildReply('32', club, { chatId: 'test-dues-change-action', memberPreflightDone: true });
@@ -288,12 +288,12 @@ const upcomingEventsQuestion = await ask('Vocês têm festa esse fim de semana?'
 assert.match(upcomingEventsQuestion, /Eventos/);
 
 const reservationsMenuWithDateChange = await ask('1', 'test-reservations-menu-datechange');
-assert.match(reservationsMenuWithDateChange, /15\. Já tenho reserva e quero trocar a data/);
+assert.match(reservationsMenuWithDateChange, /1️⃣5️⃣ Já tenho reserva e quero trocar a data/);
 
 const dateChangeSpacePrompt = await ask('15', 'test-datechange-space');
 assert.match(dateChangeSpacePrompt, /Troca de data/);
 assert.match(dateChangeSpacePrompt, /Qual ambiente é a sua reserva atual/);
-assert.match(dateChangeSpacePrompt, /11\. Salão Principal/);
+assert.match(dateChangeSpacePrompt, /1️⃣1️⃣ Salão Principal/);
 
 const dateChangeInvalidSpace = await ask('99', 'test-datechange-space');
 assert.match(dateChangeInvalidSpace, /Não reconheci essa opção/);

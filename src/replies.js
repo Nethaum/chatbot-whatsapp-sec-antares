@@ -1984,7 +1984,7 @@ function reservations(club) {
     '',
     ...reservationSpacesList(club),
     '',
-    '15. Já tenho reserva e quero trocar a data 🔄'
+    '1️⃣5️⃣ Já tenho reserva e quero trocar a data 🔄'
   ].join('\n');
 }
 
@@ -1994,10 +1994,10 @@ function reservationSpacesList(club) {
   return reservationInfo.spaces?.length
     ? reservationInfo.spaces.map(formatReservationSpace)
     : [
-        '11. Salão Principal (400 pessoas) 🏛️',
-        '12. Salão Restaurante (120 pessoas) 🍽️',
-        '13. Churrasqueira (80 pessoas) 🔥 (inclui Playground 🛝 e Cancha de Bocha 🎳)',
-        '14. Quadra de Areia 🏐'
+        '1️⃣1️⃣ Salão Principal (400 pessoas) 🏛️',
+        '1️⃣2️⃣ Salão Restaurante (120 pessoas) 🍽️',
+        '1️⃣3️⃣ Churrasqueira (80 pessoas) 🔥 (inclui Playground 🛝 e Cancha de Bocha 🎳)',
+        '1️⃣4️⃣ Quadra de Areia 🏐'
       ];
 }
 
@@ -2021,10 +2021,10 @@ function formatReservationSpace(space) {
   }
 
   const reservationSpaces = {
-    11: '11. Salão Principal (400 pessoas) 🏛️',
-    12: '12. Salão Restaurante (120 pessoas) 🍽️',
-    13: '13. Churrasqueira (80 pessoas) 🔥 (inclui Playground 🛝 e Cancha de Bocha 🎳)',
-    14: '14. Quadra de Areia 🏐'
+    11: '1️⃣1️⃣ Salão Principal (400 pessoas) 🏛️',
+    12: '1️⃣2️⃣ Salão Restaurante (120 pessoas) 🍽️',
+    13: '1️⃣3️⃣ Churrasqueira (80 pessoas) 🔥 (inclui Playground 🛝 e Cancha de Bocha 🎳)',
+    14: '1️⃣4️⃣ Quadra de Areia 🏐'
   };
 
   return reservationSpaces[space.option] || `${space.option}. ${space.name}`;
@@ -2041,8 +2041,10 @@ function duesMenu() {
 }
 
 function formatOptionEmoji(option) {
-  const text = String(option);
-  return text.length > 1 ? `${text}.` : `${text}️⃣`;
+  return String(option)
+    .split('')
+    .map((digit) => `${digit}️⃣`)
+    .join('');
 }
 
 function duesInformation(club) {
