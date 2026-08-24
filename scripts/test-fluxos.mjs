@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { buildPreflightReply, buildReply, buildWaitNotice } from '../src/replies.js';
+import { buildPreflightReply, buildReply, buildWaitNotice, unsupportedAudioMessage } from '../src/replies.js';
 import { loadClub } from '../src/config.js';
 import { withOperationalContactPhones } from './test-helpers.mjs';
 
@@ -348,5 +348,7 @@ assert.match(courtDateChangeSelection, /Quadra de Areia/);
 
 const dateChangeKeyword = await ask('trocar data', 'test-datechange-keyword');
 assert.match(dateChangeKeyword, /Qual ambiente é a sua reserva atual/);
+
+assert.match(unsupportedAudioMessage(), /áudio/);
 
 console.log('Fluxos essenciais conferidos.');

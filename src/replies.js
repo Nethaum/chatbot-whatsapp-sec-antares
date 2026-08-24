@@ -668,6 +668,14 @@ function isOneOf(text, triggers) {
   return triggers.includes(text);
 }
 
+export function unsupportedAudioMessage() {
+  return [
+    '🎙️ Ainda não consigo ouvir mensagens de áudio por aqui.',
+    '',
+    '✍️ Poderia escrever sua mensagem em texto? Assim consigo te ajudar mais rápido.'
+  ].join('\n');
+}
+
 export function isDirectCommandInput(input) {
   const text = normalizeText(input);
 
@@ -1691,7 +1699,7 @@ function buildReservationNotificationText(choice, details, selectedDate, context
     selectedDate ? `🗓️ ${isDateChange ? 'Nova data solicitada' : 'Data'}: *${formatDateWithWeekday(selectedDate)}*` : null,
     details?.name ? `👤 Nome: *${details.name}*` : null,
     details?.time ? `🕒 Horário: *${details.time}*` : null,
-    `📱 Contato do solicitante: ${formatRequesterContact(context)}`,
+    `📱 Contato do solicitante: ${formatRequesterContact(context, getSenderMember(context.chatId))}`,
     '',
     isDateChange
       ? 'Encaminhado automaticamente pelo atendimento da SEC Antares. Verifique a reserva existente antes de confirmar a nova data.'
@@ -1701,7 +1709,13 @@ function buildReservationNotificationText(choice, details, selectedDate, context
     .join('\n');
 }
 
-function formatRequesterContact(context = {}) {
+function formatRequesterContact(context = {}, member = null) {
+  const memberPhone = (member?.phones || []).find(hasUsablePhone);
+
+  if (memberPhone) {
+    return formatPhoneForDisplay(memberPhone);
+  }
+
   const phone = contextUserPhones(context)
     .map(extractDisplayPhoneDigits)
     .find(isDisplayPhone);
@@ -2106,7 +2120,7 @@ function buildDuesNotificationText(action, context, member) {
     '',
     `${action.emoji} Pedido: *${action.label}*`,
     member?.name ? `👤 Nome: *${member.name}*` : null,
-    `📱 Contato do solicitante: ${formatRequesterContact(context)}`,
+    `📱 Contato do solicitante: ${formatRequesterContact(context, member)}`,
     '',
     'Encaminhado automaticamente pelo atendimento da SEC Antares.'
   ]

@@ -5,7 +5,7 @@ import path from 'node:path';
 import { settings, loadClub } from './config.js';
 import { logConversation } from './logger.js';
 import { acquireInstanceLock, shouldProcessMessage, shouldSendReply } from './messageGuard.js';
-import { buildPreflightReply, buildReply, buildWaitNotice, isDirectCommandInput } from './replies.js';
+import { buildPreflightReply, buildReply, buildWaitNotice, isDirectCommandInput, unsupportedAudioMessage } from './replies.js';
 import { compactWhitespace, uniqueValues } from './text.js';
 import { isGroupChat, isGroupChatId, isGroupMessage } from './groupPolicy.js';
 import { isInternalContactPhone, isInternalNotificationText } from './internalContacts.js';
@@ -164,6 +164,18 @@ async function handleMessage(message) {
       return;
     }
 
+    if (isAudioMessage(message)) {
+      await markChatSeen(chatId);
+      const reply = unsupportedAudioMessage();
+      const sent = await sendReply(chat, reply);
+
+      if (sent) {
+        logConversation({ from: message.from, isGroup, body: body || '[audio]', reply });
+      }
+
+      return;
+    }
+
     const burstItem = { message, body, from: message.from, isGroup, chat, chatId, userPhones };
 
     if (!pendingConversationBursts.has(chatId) && isDirectCommandInput(body)) {
@@ -277,6 +289,10 @@ async function resolveIncomingMessageContext(message) {
       userPhones: await resolveFallbackSenderPhoneCandidates(message, fallbackChatId)
     };
   }
+}
+
+function isAudioMessage(message) {
+  return message.type === 'ptt' || message.type === 'audio';
 }
 
 function getMessageChatId(message) {
@@ -432,6 +448,18 @@ async function handleRecoveredUnreadMessage(message) {
   }
 
   const chat = createChatAdapter(message.chatId, isGroup);
+
+  if (isAudioMessage(message)) {
+    await markChatSeen(message.chatId);
+    const reply = unsupportedAudioMessage();
+    const sent = await sendReply(chat, reply);
+
+    if (sent) {
+      logConversation({ from: message.from || message.chatId, isGroup, body: body || '[audio]', reply });
+    }
+
+    return;
+  }
 
   await answerIncomingMessage({
     body,
