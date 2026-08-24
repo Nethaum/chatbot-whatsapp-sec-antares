@@ -1,6 +1,6 @@
 {
   "name": "chatbot-whatsapp-clube",
-  "version": "1.7.5",
+  "version": "1.7.8",
   "description": "Chatbot local e gratuito para WhatsApp Web, pensado para atendimento de clube.",
   "type": "module",
   "private": true,

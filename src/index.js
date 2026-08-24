@@ -396,13 +396,14 @@ async function handleRecoveredUnreadMessage(message) {
   }
 
   const body = compactWhitespace(message.body);
-  const rawCandidates = [message.from, message.chatId, message.chatTitle];
+  const isLidSender = isLidChatId(message.from) || isLidChatId(message.chatId);
+  const rawCandidates = [message.from, message.chatId, !isLidSender ? message.chatTitle : null];
 
   try {
     const contact = await withTimeout(client.getContactById(message.from || message.chatId), contactLookupTimeoutMs);
     const contactId = contact?.id?._serialized || '';
     rawCandidates.push(
-      contact?.number,
+      !isLidChatId(contactId) ? contact?.number : null,
       !isLidChatId(contactId) ? contact?.id?.user : null,
       contactId
     );
@@ -497,18 +498,19 @@ function handleUnreadProcessingError(error, attempt) {
 
 async function resolveSenderPhoneCandidates(message, chat, isGroup) {
   const chatId = chat.id?._serialized || '';
+  const isLidSender = !isGroup && (isLidChatId(chatId) || isLidChatId(message.from));
   const rawCandidates = [
     isGroup ? message.author : message.from,
     !isGroup && !isLidChatId(chatId) ? chat.id?.user : null,
     !isGroup ? chatId : null,
-    !isGroup ? await readChatTitle(chatId) : null
+    !isGroup && !isLidSender ? await readChatTitle(chatId) : null
   ];
 
   try {
     const contact = await withTimeout(message.getContact(), contactLookupTimeoutMs);
     const contactId = contact?.id?._serialized || '';
     rawCandidates.push(
-      contact?.number,
+      !isLidChatId(contactId) ? contact?.number : null,
       !isLidChatId(contactId) ? contact?.id?.user : null,
       contactId
     );
@@ -520,20 +522,21 @@ async function resolveSenderPhoneCandidates(message, chat, isGroup) {
 }
 
 async function resolveFallbackSenderPhoneCandidates(message, chatId) {
+  const isLidSender = isLidChatId(chatId) || isLidChatId(message.from);
   const rawCandidates = [
     message.from,
     message.author,
     message.id?.remote,
     message.id?._serialized,
     chatId,
-    await readChatTitle(chatId)
+    !isLidSender ? await readChatTitle(chatId) : null
   ];
 
   try {
     const contact = await withTimeout(message.getContact(), contactLookupTimeoutMs);
     const contactId = contact?.id?._serialized || '';
     rawCandidates.push(
-      contact?.number,
+      !isLidChatId(contactId) ? contact?.number : null,
       !isLidChatId(contactId) ? contact?.id?.user : null,
       contactId
     );

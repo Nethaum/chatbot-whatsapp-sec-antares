@@ -2,6 +2,7 @@ export function normalizeText(value) {
   return String(value || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[\ufe0f\u20e3]/g, '')
     .toLowerCase()
     .trim();
 }
