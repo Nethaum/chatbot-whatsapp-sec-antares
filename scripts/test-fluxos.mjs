@@ -281,6 +281,18 @@ const unavailableSocialForwarding = await buildReply('19h', clubWithoutSocialPho
 assert.match(replyText(unavailableSocialForwarding), /Não foi possível encaminhar/);
 assert.equal(unavailableSocialForwarding.notifications, undefined);
 
+await ask('1', 'test-reservation-name-contamination');
+await ask('13', 'test-reservation-name-contamination');
+await ask('30/12/2026', 'test-reservation-name-contamination');
+await ask('sim', 'test-reservation-name-contamination');
+const nameWithMembershipMention = await ask('Rosalina farias\nSou socia', 'test-reservation-name-contamination');
+assert.match(nameWithMembershipMention, /Nome: Rosalina farias/);
+assert.doesNotMatch(nameWithMembershipMention, /Sou socia|Sou sócia/);
+
+const timeWithExtraWords = await ask('8:30 ate umas 17:30', 'test-reservation-name-contamination');
+assert.match(timeWithExtraWords, /Nome: Rosalina farias/);
+assert.match(timeWithExtraWords, /Horário: 08h30min/);
+
 const partyAreaAvailabilityQuestion = await ask('Boa tarde! A área de festa externa está disponível dia 19/09 ?', 'test-party-area-availability');
 assert.match(partyAreaAvailabilityQuestion, /Escolha o ambiente que deseja reservar/);
 
