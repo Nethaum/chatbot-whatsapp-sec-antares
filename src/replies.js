@@ -1719,7 +1719,7 @@ function formatRequesterContact(context = {}, member = null) {
 
   const phone = contextUserPhones(context)
     .map(extractDisplayPhoneDigits)
-    .find(isDisplayPhone);
+    .find(hasUsablePhone);
 
   return phone ? formatPhoneForDisplay(phone) : 'não identificado pelo WhatsApp';
 }
@@ -1732,10 +1732,6 @@ function extractDisplayPhoneDigits(value) {
   }
 
   return text.replace(/@.+$/, '').replace(/\D/g, '');
-}
-
-function isDisplayPhone(value) {
-  return value.length >= 10 && value.length <= 13;
 }
 
 function formatPhoneForDisplay(value) {
@@ -1825,7 +1821,13 @@ function formatReservationTime(value) {
 }
 
 function extractReservationName(value) {
-  const withoutDatesAndTimes = stripMembershipMentions(stripDateMentions(value)).replace(reservationTimeGlobalRegex, ' ');
+  const withoutMembershipMentions = stripMembershipMentions(String(value || ''));
+  const lines = withoutMembershipMentions.split('\n');
+  const relevantText = lines.length > 1
+    ? lines.filter((line) => !reservationTimeRegex.test(stripDateMentions(line))).join(' ')
+    : withoutMembershipMentions;
+
+  const withoutDatesAndTimes = stripDateMentions(relevantText).replace(reservationTimeGlobalRegex, ' ');
   const tokens = withoutDatesAndTimes.match(/\p{L}{2,}/gu) || [];
   const meaningfulTokens = tokens.filter((token) => !reservationDetailStopWords.has(normalizeText(token)));
 

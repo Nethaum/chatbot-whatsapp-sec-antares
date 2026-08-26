@@ -293,6 +293,27 @@ const timeWithExtraWords = await ask('8:30 ate umas 17:30', 'test-reservation-na
 assert.match(timeWithExtraWords, /Nome: Rosalina farias/);
 assert.match(timeWithExtraWords, /Horário: 08h30min/);
 
+await ask('1', 'test-reservation-name-time-same-message');
+await ask('13', 'test-reservation-name-time-same-message');
+await ask('30/12/2026', 'test-reservation-name-time-same-message');
+await ask('sim', 'test-reservation-name-time-same-message');
+const nameAndTimeOnSeparateLines = await ask('Welington Guthner\nInício as 9:00 am', 'test-reservation-name-time-same-message');
+assert.match(nameAndTimeOnSeparateLines, /Nome: Welington Guthner/);
+assert.doesNotMatch(nameAndTimeOnSeparateLines, /Início|am\b/);
+assert.match(nameAndTimeOnSeparateLines, /Horário: 09h00min/);
+
+await buildReply('1', club, { chatId: 'test-reservation-garbage-phone', userPhones: ['4668846252790'] });
+await buildReply('13', club, { chatId: 'test-reservation-garbage-phone', userPhones: ['4668846252790'] });
+await buildReply('30/12/2026', club, { chatId: 'test-reservation-garbage-phone', userPhones: ['4668846252790'] });
+await buildReply('sim', club, { chatId: 'test-reservation-garbage-phone', userPhones: ['4668846252790'] });
+await buildReply('Everton Mayer', club, { chatId: 'test-reservation-garbage-phone', userPhones: ['4668846252790'] });
+const garbagePhoneConfirmation = await buildReply('15h', club, {
+  chatId: 'test-reservation-garbage-phone',
+  userPhones: ['4668846252790']
+});
+assert.match(garbagePhoneConfirmation.notifications[0].text, /Contato do solicitante: não identificado pelo WhatsApp/);
+assert.doesNotMatch(garbagePhoneConfirmation.notifications[0].text, /4668846252790/);
+
 const partyAreaAvailabilityQuestion = await ask('Boa tarde! A área de festa externa está disponível dia 19/09 ?', 'test-party-area-availability');
 assert.match(partyAreaAvailabilityQuestion, /Escolha o ambiente que deseja reservar/);
 

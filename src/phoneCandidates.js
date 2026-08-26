@@ -8,9 +8,14 @@ export function extractPhoneCandidates(value) {
   const beforeAt = text.replace(/@.+$/, '');
   const digits = beforeAt.replace(/\D/g, '');
 
-  if (digits.length < 10 || digits.length > 13) {
+  if (!isPlausibleBrazilPhone(digits)) {
     return [];
   }
 
   return [digits];
+}
+
+function isPlausibleBrazilPhone(digits) {
+  const nationalDigits = digits.startsWith('55') && digits.length > 11 ? digits.slice(2) : digits;
+  return nationalDigits.length === 10 || nationalDigits.length === 11;
 }
