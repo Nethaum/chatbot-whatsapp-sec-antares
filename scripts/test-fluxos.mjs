@@ -164,7 +164,9 @@ assert.match(restaurantMenu, /Ecônomo/);
 assert.match(restaurantMenu, /WhatsApp:/);
 assert.doesNotMatch(restaurantMenu, /wa\.me|Abrir conversa/);
 
-assert.equal(await ask('enviar', 'test-outside-feedback'), null);
+const outsideFeedbackReply = await ask('enviar', 'test-outside-feedback');
+assert.match(outsideFeedbackReply, /Não entendi sua mensagem/);
+assert.match(outsideFeedbackReply, /Escolha uma opção ou digite uma palavra‑chave/);
 
 const feedbackMenu = await ask('5', 'test-feedback');
 assert.match(feedbackMenu, /Feedback/);
@@ -314,6 +316,12 @@ const garbagePhoneConfirmation = await buildReply('15h', club, {
 assert.match(garbagePhoneConfirmation.notifications[0].text, /Contato do solicitante: não identificado pelo WhatsApp/);
 assert.doesNotMatch(garbagePhoneConfirmation.notifications[0].text, /4668846252790/);
 
+const weddingRentalQuestion = await ask(
+  'Olá bom dia\nMe chamo Jeane\nQueria ver com vocês sobre aluguel para casamento\nA data que eu preciso é 12/06/2027',
+  'test-wedding-rental-question'
+);
+assert.match(weddingRentalQuestion, /Escolha o ambiente que deseja reservar/);
+
 const partyAreaAvailabilityQuestion = await ask('Boa tarde! A área de festa externa está disponível dia 19/09 ?', 'test-party-area-availability');
 assert.match(partyAreaAvailabilityQuestion, /Escolha o ambiente que deseja reservar/);
 
@@ -335,7 +343,7 @@ const dateChangeCancelled = await ask('cancelar', 'test-datechange-cancel');
 await ask('15', 'test-datechange-cancel');
 const dateChangeCancelReply = await ask('cancelar', 'test-datechange-cancel');
 assert.match(dateChangeCancelReply, /Nenhuma solicitação foi enviada/);
-assert.equal(dateChangeCancelled, null);
+assert.match(dateChangeCancelled, /Não entendi sua mensagem/);
 
 await askAsMember('15', 'test-member-datechange');
 const dateChangeAskDate = await askAsMember('11', 'test-member-datechange');

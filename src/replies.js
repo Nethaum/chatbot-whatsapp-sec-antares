@@ -614,8 +614,13 @@ async function replyForIntent(intentKey, club, chatId) {
     case 'handoff':
       return withNavigationShortcuts(handoff(club));
     default:
-      return null;
+      setNavigationScreen(chatId, 'main');
+      return unrecognizedMessage(club, getSenderMember(chatId));
   }
+}
+
+function unrecognizedMessage(club, member = null) {
+  return ['🤔 Não entendi sua mensagem.', '', menu(club, member)].join('\n');
 }
 
 async function navigateBack(chatId, club) {

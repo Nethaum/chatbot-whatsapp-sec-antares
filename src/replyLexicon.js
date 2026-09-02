@@ -167,7 +167,10 @@ export const intentMatchers = [
       'quero reservar',
       'como reservar',
       'aluguel de espaco',
-      'alugar'
+      'aluguel',
+      'alugar',
+      'casamento',
+      'casamentos'
     ]
   },
   {
