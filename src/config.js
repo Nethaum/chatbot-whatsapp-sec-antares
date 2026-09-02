@@ -8,6 +8,9 @@ dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const rootDir = path.resolve(__dirname, '..');
 const clubPath = path.join(rootDir, 'data', 'club.json');
+const packageJsonPath = path.join(rootDir, 'package.json');
+
+export const botVersion = readBotVersion();
 const defaultEventsSpreadsheetUrl =
   'https://1drv.ms/x/c/4f4433ee4b2fea3a/IQA66i9L7jNEIIBPN2YAAAAAAVpcm1ifyE8ldoGNslNcYzc?download=1';
 const contactPhoneEnvByArea = {
@@ -31,6 +34,7 @@ export const settings = {
     process.env.COURT_SPREADSHEET_URL ||
     'https://1drv.ms/x/c/4f4433ee4b2fea3a/IQA66i9L7jNEIIBPO2YAAAAAAQMrQKACDoF8cSnU9Pimxos?download=1',
   defaultPhoneDdd: process.env.DEFAULT_PHONE_DDD || '47',
+  developerPhone: process.env.DEVELOPER_PHONE || '',
   membersRemoteLookup: process.env.MEMBERS_REMOTE_LOOKUP === 'true',
   membersSpreadsheetUrl: process.env.MEMBERS_SPREADSHEET_URL || process.env.MEMBERS_SOURCE || '',
   logsDir: path.join(rootDir, 'logs')
@@ -43,6 +47,15 @@ export function loadClub() {
 
 export function rootPath(...parts) {
   return path.join(rootDir, ...parts);
+}
+
+function readBotVersion() {
+  try {
+    const raw = fs.readFileSync(packageJsonPath, 'utf8');
+    return JSON.parse(raw).version || '';
+  } catch {
+    return '';
+  }
 }
 
 function positiveInteger(value, fallback) {

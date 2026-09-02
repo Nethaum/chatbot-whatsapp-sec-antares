@@ -130,6 +130,7 @@ READY_TIMEOUT_MS=180000
 SESSION_HEALTH_CHECK_MS=300000
 RECONNECT_DELAY_MS=15000
 DEFAULT_PHONE_DDD=47
+DEVELOPER_PHONE=
 MEMBERS_SOURCE=
 MEMBERS_REMOTE_LOOKUP=false
 SECRETARIA_PHONE=
@@ -152,6 +153,8 @@ Quando `PRICING_SPREADSHEET_URL` fica vazio, o bot procura a aba de preços dent
 Toda vez que a consulta à planilha de preços funciona, o bot salva os valores em `data/pricing-fallback.json`. Se a planilha ficar indisponível, o bot usa esses últimos valores salvos em vez de deixar o sócio sem resposta. O arquivo é atualizado sozinho sempre que a planilha volta a responder — não precisa editar manualmente.
 
 Os telefones operacionais dos setores devem ficar apenas no `.env` local. O arquivo `data/club.json` mantém somente a estrutura pública dos contatos. Os encaminhamentos automáticos dependem dessas variáveis locais, especialmente `TESOURARIA_PHONE`, `SOCIAL_PHONE` e `ESPORTES_PHONE`.
+
+`DEVELOPER_PHONE` recebe as solicitações de contato feitas pela opção 71 (dentro de "Sobre o Bot"). Diferente dos demais, esse contato não aparece no menu público de Contatos.
 
 ## Lista de sócios
 

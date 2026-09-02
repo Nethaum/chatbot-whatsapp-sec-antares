@@ -1,4 +1,5 @@
 import { containsAny, normalizeText } from './text.js';
+import { botVersion, settings } from './config.js';
 import { buildEventsReply, checkReservationAvailability } from './eventAgenda.js';
 import { findMemberByPhone } from './memberRegistry.js';
 import { buildReservationPricingText } from './reservationPricing.js';
@@ -68,6 +69,13 @@ const duesActionMap = {
     menuLabel: 'Informações',
     emoji: 'ℹ️',
     type: 'information'
+  }
+};
+const aboutActionMap = {
+  71: {
+    label: 'Contato com o Desenvolvedor',
+    menuLabel: 'Falar com o Desenvolvedor',
+    emoji: '👨‍💻'
   }
 };
 
@@ -201,6 +209,12 @@ export async function buildReply(input, club, context = {}) {
     clearMembershipState(chatId);
     clearFeedbackState(chatId);
     return handleDuesAction(duesActionMap[text], club, chatId, context);
+  }
+
+  if (aboutActionMap[text]) {
+    clearMembershipState(chatId);
+    clearFeedbackState(chatId);
+    return handleAboutAction(aboutActionMap[text], chatId, context);
   }
 
   if (reservationNumberMap[text]) {
@@ -613,6 +627,8 @@ async function replyForIntent(intentKey, club, chatId) {
       return withNavigationShortcuts(rules(club));
     case 'handoff':
       return withNavigationShortcuts(handoff(club));
+    case 'about':
+      return withNavigationShortcuts(aboutBot(club));
     default:
       setNavigationScreen(chatId, 'main');
       return unrecognizedMessage(club, getSenderMember(chatId));
@@ -691,6 +707,7 @@ export function isDirectCommandInput(input) {
     Boolean(menuNumberMap[text]) ||
     Boolean(reservationNumberMap[text]) ||
     Boolean(duesActionMap[text]) ||
+    Boolean(aboutActionMap[text]) ||
     isOneOf(text, mainMenuTriggers) ||
     isOneOf(text, backTriggers) ||
     isOneOf(text, contextMainMenuTriggers) ||
@@ -723,12 +740,9 @@ function menu(club, member = null) {
     '4️⃣ Associação 🧾',
     '5️⃣ Feedback 💬',
     '6️⃣ Contatos 📞',
+    '7️⃣ Sobre o Bot ℹ️',
     ''
   ];
-
-  if (club.serviceNotice) {
-    lines.push(club.serviceNotice, '');
-  }
 
   lines.push('💡 Dica: envie apenas o número da opção para ir direto ao que deseja.');
 
@@ -2142,6 +2156,64 @@ function buildDuesNotificationText(action, context, member) {
     .join('\n');
 }
 
+function handleAboutAction(action, chatId, context = {}) {
+  setNavigationScreen(chatId, 'about');
+  const member = getSenderMember(chatId);
+  return withParentShortcuts(developerContactReceived(action, context, member), 'about');
+}
+
+function developerContactReceived(action, context, member) {
+  const notification = buildDeveloperContactNotification(action, context, member);
+
+  if (!notification) {
+    return [
+      `${action.emoji} ${action.label}`,
+      '',
+      '⚠️ Não foi possível encaminhar a solicitação automaticamente.',
+      '',
+      '📞 Tente novamente mais tarde.'
+    ].join('\n');
+  }
+
+  const text = [
+    `${action.emoji} ${action.label}`,
+    '',
+    '✅ Solicitação recebida.',
+    '',
+    '📞 O desenvolvedor entrará em contato em breve.'
+  ].join('\n');
+
+  return {
+    text,
+    notifications: [notification]
+  };
+}
+
+function buildDeveloperContactNotification(action, context, member) {
+  if (!hasUsablePhone(settings.developerPhone)) {
+    return null;
+  }
+
+  return {
+    to: settings.developerPhone,
+    area: 'Desenvolvedor',
+    text: buildDeveloperContactNotificationText(action, context, member)
+  };
+}
+
+function buildDeveloperContactNotificationText(action, context, member) {
+  return [
+    `📌 Nova solicitação de *${action.label}*`,
+    '',
+    member?.name ? `👤 Nome: *${member.name}*` : null,
+    `📱 Contato do solicitante: ${formatRequesterContact(context, member)}`,
+    '',
+    'Encaminhado automaticamente pelo atendimento da SEC Antares.'
+  ]
+    .filter((line) => line !== null && line !== undefined)
+    .join('\n');
+}
+
 function hasUsablePhone(value) {
   const digits = String(value || '').replace(/\D/g, '');
 
@@ -2330,6 +2402,24 @@ function handoff(club) {
     : [];
 
   return [withLeadingEmoji(club.handoff || 'Vou chamar alguém da equipe para continuar o atendimento.', '💬'), ...contacts].join('\n');
+}
+
+function aboutBot(club) {
+  const lines = [
+    'ℹ️ Sobre o Bot',
+    '',
+    `🤖 Assistente virtual do ${club.name || 'clube'}`,
+    botVersion ? `🔢 Versão: ${botVersion}` : null,
+    '🛠️ Atendimento automatizado para agilizar reservas, eventos, mensalidade e outras informações.',
+    '',
+    '7️⃣1️⃣ Falar com o Desenvolvedor 👨‍💻'
+  ].filter((line) => line !== null && line !== undefined);
+
+  if (club.serviceNotice) {
+    lines.push('', club.serviceNotice);
+  }
+
+  return lines.join('\n');
 }
 
 function withLeadingEmoji(text, emoji) {

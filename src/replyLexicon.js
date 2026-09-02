@@ -251,6 +251,10 @@ export const intentMatchers = [
   {
     key: 'handoff',
     words: ['humano', 'atendente', 'equipe', 'secretaria', 'diretoria', 'falar com alguem']
+  },
+  {
+    key: 'about',
+    words: ['sobre o bot', 'sobre o robo', 'versao do bot', 'qual a versao', 'voce e um robo', 'voce e um bot', 'informacoes do bot']
   }
 ];
 
@@ -260,7 +264,8 @@ export const menuNumberMap = {
   3: 'dues',
   4: 'membership',
   5: 'feedback',
-  6: 'contacts'
+  6: 'contacts',
+  7: 'about'
 };
 
 export const screenParents = {
@@ -276,6 +281,7 @@ export const screenParents = {
   feedback: 'main',
   rules: 'main',
   handoff: 'main',
+  about: 'main',
   reservationDate: 'reservations',
   reservationSpace: 'reservations'
 };

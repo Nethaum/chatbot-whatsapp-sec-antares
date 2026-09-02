@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
 import { buildPreflightReply, buildReply, buildWaitNotice, unsupportedAudioMessage } from '../src/replies.js';
-import { loadClub } from '../src/config.js';
+import { loadClub, settings } from '../src/config.js';
 import { withOperationalContactPhones } from './test-helpers.mjs';
 
 const club = withOperationalContactPhones(loadClub());
+settings.developerPhone = '5547999990000';
 
 function replyText(reply) {
   return reply && typeof reply === 'object' ? reply.text : reply;
@@ -37,7 +38,28 @@ assert.match(mainMenu, /Bem-vindo\(a\)/);
 assert.match(mainMenu, /Reservas/);
 assert.match(mainMenu, /Feedback/);
 assert.match(mainMenu, /Contatos/);
-assert.match(mainMenu, /fase de aprimoramento/);
+assert.match(mainMenu, /7️⃣ Sobre o Bot/);
+assert.doesNotMatch(mainMenu, /fase de aprimoramento/);
+
+const aboutMenu = await ask('7', 'test-about-bot');
+assert.match(aboutMenu, /Sobre o Bot/);
+assert.match(aboutMenu, /Versão: \d+\.\d+\.\d+/);
+assert.match(aboutMenu, /fase de aprimoramento/);
+assert.match(aboutMenu, /7️⃣1️⃣ Falar com o Desenvolvedor/);
+
+const developerContact = await buildReply('71', club, {
+  chatId: 'test-developer-contact',
+  userPhone: '5547999998888',
+  userPhones: ['5547999998888']
+});
+assert.match(replyText(developerContact), /Contato com o Desenvolvedor/);
+assert.match(replyText(developerContact), /Solicitação recebida/);
+assert.match(replyText(developerContact), /O desenvolvedor entrará em contato/);
+assert.equal(developerContact.notifications?.length, 1);
+assert.equal(developerContact.notifications[0].area, 'Desenvolvedor');
+assert.equal(developerContact.notifications[0].to, settings.developerPhone);
+assert.match(developerContact.notifications[0].text, /Nova solicitação de \*Contato com o Desenvolvedor\*/);
+assert.match(developerContact.notifications[0].text, /Contato do solicitante: \+55 47 99999-8888/);
 
 const memberMenu = await askAsMember('oi', 'test-member-menu');
 assert.match(memberMenu, /(Bom dia|Boa tarde|Boa noite), Maria!/);
