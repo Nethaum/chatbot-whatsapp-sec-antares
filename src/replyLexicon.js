@@ -52,7 +52,7 @@ export const reservationDateChangeTriggers = [
   'mudar a reserva'
 ];
 
-export const closingTriggers = ['tchau', 'obrigado', 'valeu', 'ate mais', 'encerrar', 'sair', 'finalizar'];
+export const closingTriggers = ['tchau', 'obrigado', 'obrigada', 'obg', 'valeu', 'ate mais', 'encerrar', 'sair', 'finalizar'];
 export const finishConversationTriggers = ['fim', ...closingTriggers];
 
 export const feedbackSubmitTriggers = [

@@ -49,6 +49,8 @@ const markedTimePattern = `${hourNumberPattern}(?:h(?:rs?|s)?(?:(?:[0-5]\\d)(?:m
 const reservationTimePattern = `(?:${markedTimePattern}|${hourNumberPattern})`;
 const reservationTimeRegex = new RegExp(`\\b${reservationTimePattern}\\b`, 'i');
 const reservationTimeGlobalRegex = new RegExp(`\\b${reservationTimePattern}\\b`, 'gi');
+const timeLabelPattern = '(?:hor[aá]rios?(?:\\s+de\\s+in[ií]cio)?|in[ií]cio)\\s*(?:[:\\-]|\\bas\\b|\\b[aà]s\\b)?\\s*';
+const reservationTimeWithLabelGlobalRegex = new RegExp(`\\b(?:${timeLabelPattern})?${reservationTimePattern}\\b`, 'gi');
 const dateMentionGlobalRegex = /\b\d{1,2}\/\d{1,2}(?:\/\d{2,4})?\b/g;
 const membershipMentionGlobalRegex = /\bsou\s+(?:s[oó]ci[oa]|associad[oa]|titular|dependente)\b/gi;
 const duesActionMap = {
@@ -1846,7 +1848,7 @@ function extractReservationName(value) {
     ? lines.filter((line) => !reservationTimeRegex.test(stripDateMentions(line))).join(' ')
     : withoutMembershipMentions;
 
-  const withoutDatesAndTimes = stripDateMentions(relevantText).replace(reservationTimeGlobalRegex, ' ');
+  const withoutDatesAndTimes = stripDateMentions(relevantText).replace(reservationTimeWithLabelGlobalRegex, ' ');
   const tokens = withoutDatesAndTimes.match(/\p{L}{2,}/gu) || [];
   const meaningfulTokens = tokens.filter((token) => !reservationDetailStopWords.has(normalizeText(token)));
 

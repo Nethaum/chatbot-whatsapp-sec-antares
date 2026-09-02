@@ -326,6 +326,19 @@ assert.match(nameAndTimeOnSeparateLines, /Nome: Welington Guthner/);
 assert.doesNotMatch(nameAndTimeOnSeparateLines, /Início|am\b/);
 assert.match(nameAndTimeOnSeparateLines, /Horário: 09h00min/);
 
+await ask('1', 'test-reservation-name-time-same-line');
+await ask('11', 'test-reservation-name-time-same-line');
+await ask('12/06/2027', 'test-reservation-name-time-same-line');
+await ask('sim', 'test-reservation-name-time-same-line');
+const nameWithTimeLabelSameLine = await ask('Jeane Caroline Bortoluzzi Leal Horário 17:15', 'test-reservation-name-time-same-line');
+assert.match(nameWithTimeLabelSameLine, /Nome: Jeane Caroline Bortoluzzi Leal/);
+assert.doesNotMatch(nameWithTimeLabelSameLine, /Nome: Jeane Caroline Bortoluzzi Leal Horário/);
+assert.match(nameWithTimeLabelSameLine, /Horário: 17h15min/);
+
+const thanksReply = await ask('Obrigada', 'test-thanks');
+assert.match(thanksReply, /Atendimento encerrado/);
+assert.doesNotMatch(thanksReply, /Escolha uma opção/);
+
 await buildReply('1', club, { chatId: 'test-reservation-garbage-phone', userPhones: ['4668846252790'] });
 await buildReply('13', club, { chatId: 'test-reservation-garbage-phone', userPhones: ['4668846252790'] });
 await buildReply('30/12/2026', club, { chatId: 'test-reservation-garbage-phone', userPhones: ['4668846252790'] });
