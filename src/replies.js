@@ -234,7 +234,7 @@ export async function buildReply(input, club, context = {}) {
 
   const intentKey = findIntentKey(text);
 
-  return replyForIntent(intentKey, club, chatId);
+  return replyForIntent(intentKey, club, chatId, context);
 }
 
 function shouldSkipWaitNotice(text) {
@@ -332,7 +332,7 @@ async function handleActiveReservationState(input, text, state, club, chatId, co
   if (intentKey) {
     clearReservationState(chatId);
     clearFeedbackState(chatId);
-    return replyForIntent(intentKey, club, chatId);
+    return replyForIntent(intentKey, club, chatId, context);
   }
 
   switch (state.step) {
@@ -500,7 +500,7 @@ function handleActiveDuesState(input, text, state, club, chatId, context = {}) {
 
   if (intentKey) {
     clearDuesState(chatId);
-    return replyForIntent(intentKey, club, chatId);
+    return replyForIntent(intentKey, club, chatId, context);
   }
 
   const name = extractReservationName(input);
@@ -583,7 +583,7 @@ function clearAllStates(chatId) {
   clearDuesState(chatId);
 }
 
-async function replyForIntent(intentKey, club, chatId) {
+async function replyForIntent(intentKey, club, chatId, context = {}) {
   if (intentKey) {
     setNavigationScreen(chatId, intentKey);
   }
@@ -631,14 +631,11 @@ async function replyForIntent(intentKey, club, chatId) {
       return withNavigationShortcuts(handoff(club));
     case 'about':
       return withNavigationShortcuts(aboutBot(club));
+    case 'swimmingLessons':
+      return withNavigationShortcuts(swimmingLessonsRequestReceived(club, context, getSenderMember(chatId)));
     default:
-      setNavigationScreen(chatId, 'main');
-      return unrecognizedMessage(club, getSenderMember(chatId));
+      return null;
   }
-}
-
-function unrecognizedMessage(club, member = null) {
-  return ['🤔 Não entendi sua mensagem.', '', menu(club, member)].join('\n');
 }
 
 async function navigateBack(chatId, club) {
@@ -2206,6 +2203,60 @@ function buildDeveloperContactNotification(action, context, member) {
 function buildDeveloperContactNotificationText(action, context, member) {
   return [
     `📌 Nova solicitação de *${action.label}*`,
+    '',
+    member?.name ? `👤 Nome: *${member.name}*` : null,
+    `📱 Contato do solicitante: ${formatRequesterContact(context, member)}`,
+    '',
+    'Encaminhado automaticamente pelo atendimento da SEC Antares.'
+  ]
+    .filter((line) => line !== null && line !== undefined)
+    .join('\n');
+}
+
+function swimmingLessonsRequestReceived(club, context, member) {
+  const notification = buildSwimmingLessonsNotification(club, context, member);
+
+  if (!notification) {
+    return [
+      '🏊 Aulas de Natação',
+      '',
+      '⚠️ Não foi possível encaminhar a solicitação automaticamente.',
+      '',
+      '📞 Tente novamente mais tarde ou procure a secretaria.'
+    ].join('\n');
+  }
+
+  const text = [
+    '🏊 Aulas de Natação',
+    '',
+    '✅ Solicitação recebida.',
+    '',
+    '📞 O responsável pelas aulas de natação retornará o contato em breve.'
+  ].join('\n');
+
+  return {
+    text,
+    notifications: [notification]
+  };
+}
+
+function buildSwimmingLessonsNotification(club, context, member) {
+  const contact = findContactByArea(club, 'Esportes');
+
+  if (!hasUsablePhone(contact?.phone)) {
+    return null;
+  }
+
+  return {
+    to: contact.phone,
+    area: contact.area,
+    text: buildSwimmingLessonsNotificationText(context, member)
+  };
+}
+
+function buildSwimmingLessonsNotificationText(context, member) {
+  return [
+    '📌 Nova solicitação sobre *Aulas de Natação*',
     '',
     member?.name ? `👤 Nome: *${member.name}*` : null,
     `📱 Contato do solicitante: ${formatRequesterContact(context, member)}`,

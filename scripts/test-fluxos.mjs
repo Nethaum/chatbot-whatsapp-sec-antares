@@ -186,9 +186,7 @@ assert.match(restaurantMenu, /Ecônomo/);
 assert.match(restaurantMenu, /WhatsApp:/);
 assert.doesNotMatch(restaurantMenu, /wa\.me|Abrir conversa/);
 
-const outsideFeedbackReply = await ask('enviar', 'test-outside-feedback');
-assert.match(outsideFeedbackReply, /Não entendi sua mensagem/);
-assert.match(outsideFeedbackReply, /Escolha uma opção ou digite uma palavra‑chave/);
+assert.equal(await ask('enviar', 'test-outside-feedback'), null);
 
 const feedbackMenu = await ask('5', 'test-feedback');
 assert.match(feedbackMenu, /Feedback/);
@@ -360,6 +358,18 @@ assert.match(weddingRentalQuestion, /Escolha o ambiente que deseja reservar/);
 const partyAreaAvailabilityQuestion = await ask('Boa tarde! A área de festa externa está disponível dia 19/09 ?', 'test-party-area-availability');
 assert.match(partyAreaAvailabilityQuestion, /Escolha o ambiente que deseja reservar/);
 
+const swimmingLessonsQuestion = await buildReply('Gostaria de saber quanto custa a aula de natação', club, {
+  chatId: 'test-swimming-lessons',
+  userPhone: '5547999997777',
+  userPhones: ['5547999997777']
+});
+assert.match(replyText(swimmingLessonsQuestion), /Aulas de Natação/);
+assert.match(replyText(swimmingLessonsQuestion), /Solicitação recebida/);
+assert.equal(swimmingLessonsQuestion.notifications?.length, 1);
+assert.equal(swimmingLessonsQuestion.notifications[0].area, 'Esportes');
+assert.match(swimmingLessonsQuestion.notifications[0].text, /Nova solicitação sobre \*Aulas de Natação\*/);
+assert.match(swimmingLessonsQuestion.notifications[0].text, /Contato do solicitante: \+55 47 99999-7777/);
+
 const upcomingEventsQuestion = await ask('Vocês têm festa esse fim de semana?', 'test-upcoming-events-question');
 assert.match(upcomingEventsQuestion, /Eventos/);
 
@@ -378,7 +388,7 @@ const dateChangeCancelled = await ask('cancelar', 'test-datechange-cancel');
 await ask('15', 'test-datechange-cancel');
 const dateChangeCancelReply = await ask('cancelar', 'test-datechange-cancel');
 assert.match(dateChangeCancelReply, /Nenhuma solicitação foi enviada/);
-assert.match(dateChangeCancelled, /Não entendi sua mensagem/);
+assert.equal(dateChangeCancelled, null);
 
 await askAsMember('15', 'test-member-datechange');
 const dateChangeAskDate = await askAsMember('11', 'test-member-datechange');

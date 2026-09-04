@@ -25,8 +25,8 @@ O projeto roda no computador do operador, usa planilhas como fonte de dados para
 - Reconexão automática em falhas transitórias do WhatsApp Web.
 - Inicialização automática no Windows por tarefa agendada.
 - Aviso educado quando o cliente envia mensagem de áudio (formato ainda não suportado).
-- Mensagem padrão com o menu principal quando a solicitação não é reconhecida, em vez de ficar sem resposta.
 - Menu "Sobre o Bot" com a versão atual e opção de contato direto com o desenvolvedor.
+- Encaminhamento automático de perguntas sobre aulas de natação ao setor de Esportes.
 
 ## Requisitos
 
@@ -262,7 +262,7 @@ O menu de reservas também oferece a opção "Já tenho reserva e quero trocar a
 
 Quando a mensagem é um comando direto e completo (ex.: número de menu, "sim", "não", "voltar", "menu", saudações), o bot responde imediatamente. Para qualquer outro texto, o bot aguarda cerca de 8 segundos de silêncio antes de responder, agrupando as mensagens enviadas nesse intervalo em uma única interpretação. Isso evita respostas fragmentadas ou repetidas quando a pessoa envia o pedido em várias mensagens seguidas.
 
-Se, depois de agrupada, a mensagem não bater com nenhuma palavra-chave ou fluxo em andamento, o bot responde com um aviso ("Não entendi sua mensagem") seguido do menu principal, em vez de ficar em silêncio. Esse aviso só é avaliado depois do agrupamento acima, então não é disparado por fragmento de mensagem enquanto a pessoa ainda está digitando.
+Se, depois de agrupada, a mensagem não bater com nenhuma palavra-chave ou fluxo em andamento, o bot não responde nada, em vez de arriscar uma resposta fora de contexto.
 
 ## Navegação
 

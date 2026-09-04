@@ -249,6 +249,10 @@ export const intentMatchers = [
     words: ['regra', 'regras', 'convidado', 'visitante', 'carteirinha']
   },
   {
+    key: 'swimmingLessons',
+    words: ['natacao', 'aula de natacao', 'aulas de natacao', 'professor de natacao', 'professora de natacao']
+  },
+  {
     key: 'handoff',
     words: ['humano', 'atendente', 'equipe', 'secretaria', 'diretoria', 'falar com alguem']
   },
