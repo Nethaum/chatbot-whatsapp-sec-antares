@@ -326,7 +326,7 @@ assert.match(nameAndTimeOnSeparateLines, /Horário: 09h00min/);
 
 await ask('1', 'test-reservation-name-time-same-line');
 await ask('11', 'test-reservation-name-time-same-line');
-await ask('12/06/2027', 'test-reservation-name-time-same-line');
+await ask('30/12/2026', 'test-reservation-name-time-same-line');
 await ask('sim', 'test-reservation-name-time-same-line');
 const nameWithTimeLabelSameLine = await ask('Jeane Caroline Bortoluzzi Leal Horário 17:15', 'test-reservation-name-time-same-line');
 assert.match(nameWithTimeLabelSameLine, /Nome: Jeane Caroline Bortoluzzi Leal/);
@@ -369,6 +369,13 @@ assert.equal(swimmingLessonsQuestion.notifications?.length, 1);
 assert.equal(swimmingLessonsQuestion.notifications[0].area, 'Esportes');
 assert.match(swimmingLessonsQuestion.notifications[0].text, /Nova solicitação sobre \*Aulas de Natação\*/);
 assert.match(swimmingLessonsQuestion.notifications[0].text, /Contato do solicitante: \+55 47 99999-7777/);
+
+const becomeAssociateQuestion = await ask(
+  'Bom dia\nTudo bem?\nGostaria de mais informações sobre se tornar um associado',
+  'test-become-associate-question'
+);
+assert.match(becomeAssociateQuestion, /Associação/);
+assert.match(becomeAssociateQuestion, /Planos disponíveis/);
 
 const upcomingEventsQuestion = await ask('Vocês têm festa esse fim de semana?', 'test-upcoming-events-question');
 assert.match(upcomingEventsQuestion, /Eventos/);

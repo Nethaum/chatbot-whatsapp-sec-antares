@@ -15,9 +15,7 @@ const { Client, LocalAuth, MessageMedia } = pkg;
 const club = loadClub();
 const maxStartupUnreadMessagesPerChat = 10;
 const readyRecoveryDelayMs = 8000;
-const unreadScanInitialDelayMs = 3000;
-const unreadScanRetryDelayMs = 5000;
-const maxUnreadScanAttempts = 3;
+const unreadScanDelaysMs = [5000, 20000, 45000, 90000];
 const contactLookupTimeoutMs = 1200;
 const conversationBurstDebounceMs = 8000;
 const pendingConversationBursts = new Map();
@@ -503,21 +501,24 @@ async function markChatSeen(chatId) {
   }
 }
 
-function scheduleUnreadScan(attempt = 1, delayMs = unreadScanInitialDelayMs) {
+function scheduleUnreadScan(index = 0) {
+  if (index >= unreadScanDelaysMs.length) {
+    return;
+  }
+
   setTimeout(() => {
-    processUnreadChats().catch((error) => handleUnreadProcessingError(error, attempt));
-  }, delayMs);
+    processUnreadChats()
+      .catch((error) => handleUnreadProcessingError(error))
+      .finally(() => scheduleUnreadScan(index + 1));
+  }, unreadScanDelaysMs[index]);
 }
 
-function handleUnreadProcessingError(error, attempt) {
+function handleUnreadProcessingError(error) {
   const errorDetails = formatErrorForLog(error);
 
-  if (isTransientBrowserError(error) && attempt < maxUnreadScanAttempts) {
-    console.warn(
-      `WhatsApp Web ainda esta estabilizando. Nova tentativa de verificar mensagens nao lidas (${attempt + 1}/${maxUnreadScanAttempts}).`
-    );
+  if (isTransientBrowserError(error)) {
+    console.warn('WhatsApp Web ainda esta estabilizando ao verificar mensagens nao lidas. Nova tentativa em instantes.');
     console.warn(errorDetails);
-    scheduleUnreadScan(attempt + 1, unreadScanRetryDelayMs);
     return;
   }
 
@@ -636,10 +637,18 @@ async function sendReply(chat, reply) {
       continue;
     }
 
-    const media = MessageMedia.fromFilePath(mediaPath);
-    const options = mediaItem.caption ? { caption: mediaItem.caption } : undefined;
-    await sendMessageSafely(chat, media, options, `mídia ${path.basename(mediaPath)}`);
-    sent = true;
+    try {
+      const media = MessageMedia.fromFilePath(mediaPath);
+      const options = mediaItem.caption ? { caption: mediaItem.caption } : undefined;
+      await sendMessageSafely(chat, media, options, `mídia ${path.basename(mediaPath)}`);
+      sent = true;
+    } catch (error) {
+      if (isTransientBrowserError(error)) {
+        throw error;
+      }
+
+      console.error(`Falha ao enviar mídia ${path.basename(mediaPath)}, continuando com os demais itens:`, formatErrorForLog(error));
+    }
   }
 
   return sent;

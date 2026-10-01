@@ -217,6 +217,8 @@ export const intentMatchers = [
     words: [
       'associacao',
       'associar',
+      'associado',
+      'associada',
       'quero ser socio',
       'virar socio',
       'cadastro',
