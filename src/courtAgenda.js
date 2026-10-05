@@ -1,4 +1,4 @@
-import ExcelJS from 'exceljs';
+import { loadWorkbook } from './workbookLoader.js';
 import { settings } from './config.js';
 import { normalizeText } from './text.js';
 import { downloadWorkbook } from './workbookDownloader.js';
@@ -34,8 +34,7 @@ export async function checkCourtAvailability(dateText) {
 }
 
 async function readCourtSlots(buffer, requestedDate) {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  const workbook = await loadWorkbook(buffer);
 
   const sheet = workbook.getWorksheet(courtSheetName);
 

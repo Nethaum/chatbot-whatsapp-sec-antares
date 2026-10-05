@@ -1,5 +1,5 @@
 import fs from 'node:fs';
-import ExcelJS from 'exceljs';
+import { loadWorkbook } from './workbookLoader.js';
 import { rootPath, settings } from './config.js';
 import { normalizeText } from './text.js';
 import { downloadWorkbook } from './workbookDownloader.js';
@@ -94,8 +94,7 @@ function savePricingFallback(spaceName, pricing) {
 }
 
 async function readReservationPricing(buffer, spaceName) {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  const workbook = await loadWorkbook(buffer);
 
   const sheet = findPricingSheet(workbook);
   const sectionStartRow = findEnvironmentSectionRow(sheet, spaceName);

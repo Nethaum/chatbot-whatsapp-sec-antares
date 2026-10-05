@@ -1,4 +1,4 @@
-import ExcelJS from 'exceljs';
+import { loadWorkbook } from './workbookLoader.js';
 import { settings } from './config.js';
 import { normalizeText } from './text.js';
 import { downloadWorkbook } from './workbookDownloader.js';
@@ -13,7 +13,7 @@ import {
   todayInTimeZone
 } from './dateUtils.js';
 
-const agendaSheetName = 'Agenda';
+const agendaSheetNamePattern = /^agenda( \d{4})?$/;
 const headerRowNumber = 4;
 const markerColumnNumber = 3;
 
@@ -67,70 +67,72 @@ export async function checkReservationAvailability(spaceName, dateText) {
 }
 
 async function readPublishedEvents(buffer) {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
-
-  const sheet = workbook.getWorksheet(agendaSheetName);
-
-  if (!sheet) {
-    throw new Error(`Aba "${agendaSheetName}" não encontrada na planilha.`);
-  }
-
-  const columns = findAgendaColumns(sheet);
+  const workbook = await loadWorkbook(buffer);
   const window = getEventWindow();
   const events = [];
 
-  sheet.eachRow((row, rowNumber) => {
-    if (rowNumber <= headerRowNumber) {
-      return;
-    }
+  for (const sheet of findAgendaSheets(workbook)) {
+    const columns = findAgendaColumns(sheet);
 
-    const marker = cellText(row.getCell(markerColumnNumber)).toUpperCase();
-    const type = cellText(row.getCell(columns.type));
-    const time = formatTime(cellValue(row.getCell(columns.time)));
-    const date = readDate(cellValue(row.getCell(columns.date)));
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber <= headerRowNumber) {
+        return;
+      }
 
-    if (marker !== 'X' || !type || !time || !date || !isWithinWindow(date, window)) {
-      return;
-    }
+      const marker = cellText(row.getCell(markerColumnNumber)).toUpperCase();
+      const type = cellText(row.getCell(columns.type));
+      const time = formatTime(cellValue(row.getCell(columns.time)));
+      const date = readDate(cellValue(row.getCell(columns.date)));
 
-    events.push({
-      date,
-      time,
-      type,
-      space: cellText(row.getCell(columns.space))
+      if (marker !== 'X' || !type || !time || !date || !isWithinWindow(date, window)) {
+        return;
+      }
+
+      events.push({
+        date,
+        time,
+        type,
+        space: cellText(row.getCell(columns.space))
+      });
     });
-  });
+  }
 
   return events.sort(compareEvents);
 }
 
-async function readReservationBookings(buffer) {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+function findAgendaSheets(workbook) {
+  const sheets = workbook.worksheets.filter(
+    (sheet) => sheet.state === 'visible' && agendaSheetNamePattern.test(normalizeText(sheet.name))
+  );
 
-  const sheet = workbook.getWorksheet(agendaSheetName);
-
-  if (!sheet) {
-    throw new Error(`Aba "${agendaSheetName}" não encontrada na planilha.`);
+  if (!sheets.length) {
+    throw new Error('Nenhuma aba de agenda ("Agenda" ou "Agenda AAAA") foi encontrada na planilha.');
   }
 
-  const columns = findAgendaColumns(sheet);
+  return sheets;
+}
+
+async function readReservationBookings(buffer) {
+  const workbook = await loadWorkbook(buffer);
   const bookings = [];
 
-  sheet.eachRow((row, rowNumber) => {
-    if (rowNumber <= headerRowNumber) {
-      return;
-    }
+  for (const sheet of findAgendaSheets(workbook)) {
+    const columns = findAgendaColumns(sheet);
 
-    const date = readDate(cellValue(row.getCell(columns.date)));
-    const space = cellText(row.getCell(columns.space));
-    const type = cellText(row.getCell(columns.type));
+    sheet.eachRow((row, rowNumber) => {
+      if (rowNumber <= headerRowNumber) {
+        return;
+      }
 
-    if (date && space && type) {
-      bookings.push({ date, space, type });
-    }
-  });
+      const date = readDate(cellValue(row.getCell(columns.date)));
+      const space = cellText(row.getCell(columns.space));
+      const type = cellText(row.getCell(columns.type));
+
+      if (date && space && type) {
+        bookings.push({ date, space, type });
+      }
+    });
+  }
 
   return bookings;
 }

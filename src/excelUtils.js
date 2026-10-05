@@ -30,7 +30,7 @@ export function cellValueToText(value) {
   }
 
   if (value instanceof Date) {
-    return value.toISOString();
+    return Number.isNaN(value.getTime()) ? '' : value.toISOString();
   }
 
   return String(value).replace(/\s+/g, ' ').trim();

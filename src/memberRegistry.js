@@ -1,4 +1,4 @@
-import ExcelJS from 'exceljs';
+import { loadWorkbook } from './workbookLoader.js';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import { rootPath, settings } from './config.js';
@@ -97,8 +97,7 @@ function phoneTargetVariants(phone) {
 }
 
 export async function extractMembersFromWorkbookBuffer(buffer) {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  const workbook = await loadWorkbook(buffer);
 
   return workbook.worksheets.flatMap(readWorksheetMembers);
 }
