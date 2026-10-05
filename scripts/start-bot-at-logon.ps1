@@ -19,8 +19,18 @@ if (-not (Test-Path -LiteralPath $sessionPath)) {
 }
 
 try {
-  & $npm start *>> $logPath
-  $exitCode = $LASTEXITCODE
+  # Redireciona pelo cmd.exe: com $ErrorActionPreference = 'Stop', qualquer linha que o
+  # Node escreva no stderr (console.warn/error) viraria erro terminante do PowerShell e
+  # derrubaria o bot. O cmd.exe tambem grava o log em texto simples (sem UTF-16).
+  $cmdLine = '"{0}" start >> "{1}" 2>&1' -f $npm, $logPath
+  $startInfo = New-Object System.Diagnostics.ProcessStartInfo
+  $startInfo.FileName = 'cmd.exe'
+  $startInfo.Arguments = '/d /s /c "' + $cmdLine + '"'
+  $startInfo.WorkingDirectory = $root.Path
+  $startInfo.UseShellExecute = $false
+  $process = [System.Diagnostics.Process]::Start($startInfo)
+  $process.WaitForExit()
+  $exitCode = $process.ExitCode
 } catch {
   Add-Content -LiteralPath $logPath -Value "Erro ao iniciar o bot: $($_.Exception.Message)"
   $exitCode = 1
