@@ -28,21 +28,32 @@ const monthNames = new Map([
   ['dez', 12]
 ]);
 
+const dateLeadInPattern = /^(?:(?:e|se|for|fosse|que|tal|pro|pra|para|no|na|em|o|a|dia|dias|seria|sera|ficaria|teria)\s+)+/;
+
 export function parseDateText(value, now = new Date()) {
-  const text = String(value || '').trim().replace(/^dias?\s+/i, '');
+  const text = stripDateLeadIn(value);
   const dayOnlyMatch = text.match(/^(\d{1,2})$/);
 
   if (dayOnlyMatch) {
     return nextDateForDay(Number(dayOnlyMatch[1]), now);
   }
 
-  const numericDate = parseNumericDate(text, now);
+  return (
+    parseNumericDate(text, now) ||
+    parseWrittenMonthDate(text, now) ||
+    findNumericDate(text, now) ||
+    findWrittenMonthDate(text, now)
+  );
+}
 
-  if (numericDate) {
-    return numericDate;
-  }
-
-  return parseWrittenMonthDate(text, now);
+function stripDateLeadIn(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[\s?!.,;:]+$/, '')
+    .replace(dateLeadInPattern, '');
 }
 
 export function readDate(value) {
@@ -175,6 +186,32 @@ function parseWrittenMonthDate(text, now) {
 
   const year = match[3] ? normalizeYear(match[3]) : todayInTimeZone(now).year;
   return buildDateParts(Number(match[1]), month, year);
+}
+
+function findNumericDate(text, now) {
+  const match = text.match(/(?<!\d)(\d{1,2})\/(\d{1,2})(?:\/(\d{4}|\d{2}))?(?!\d)/);
+
+  if (!match) {
+    return null;
+  }
+
+  const year = match[3] ? normalizeYear(match[3]) : todayInTimeZone(now).year;
+  return buildDateParts(Number(match[1]), Number(match[2]), year);
+}
+
+function findWrittenMonthDate(text, now) {
+  const pattern = /(?:^|\s)(\d{1,2})(?:\s+de)?\s+([a-z]+)(?:\s+de)?(?:\s+(\d{4}))?(?=\s|$)/g;
+
+  for (const match of normalizeDateText(text).matchAll(pattern)) {
+    const month = monthNames.get(match[2]);
+
+    if (month) {
+      const year = match[3] ? normalizeYear(match[3]) : todayInTimeZone(now).year;
+      return buildDateParts(Number(match[1]), month, year);
+    }
+  }
+
+  return null;
 }
 
 function normalizeDateText(value) {
