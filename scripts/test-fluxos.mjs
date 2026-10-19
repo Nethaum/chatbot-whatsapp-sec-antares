@@ -377,6 +377,17 @@ const becomeAssociateQuestion = await ask(
 assert.match(becomeAssociateQuestion, /Associação/);
 assert.match(becomeAssociateQuestion, /Planos disponíveis/);
 
+for (const [index, phrase] of [
+  'como faz pra ser sócio',
+  'Como faço para ser sócia?',
+  'quero virar sócia do clube',
+  'gostaria de me tornar sócio',
+  'Como faz para associar?'
+].entries()) {
+  const reply = await ask(phrase, `test-become-member-${index}`);
+  assert.match(reply, /Planos disponíveis/, `esperava o menu de Associação para "${phrase}"`);
+}
+
 const upcomingEventsQuestion = await ask('Vocês têm festa esse fim de semana?', 'test-upcoming-events-question');
 assert.match(upcomingEventsQuestion, /Eventos/);
 
